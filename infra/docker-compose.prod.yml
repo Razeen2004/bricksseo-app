@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: bricks_seo
+      POSTGRES_PASSWORD: secure_db_password_here
+      POSTGRES_DB: bricks_seo_platform
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - app_network
+
+  api:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.api
+    restart: always
+    environment:
+      # Automatically connect to the postgres container
+      - DATABASE_URL=postgresql://bricks_seo:secure_db_password_here@postgres:5432/bricks_seo_platform
+      # (All other vars like PADDLE_API_KEY will be read from a local .env file on the server)
+    env_file:
+      - ../.env
+    depends_on:
+      - postgres
+    networks:
+      - app_network
+
+  worker:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.api
+    restart: always
+    command: npm run worker:prod
+    environment:
+      - DATABASE_URL=postgresql://bricks_seo:secure_db_password_here@postgres:5432/bricks_seo_platform
+    env_file:
+      - ../.env
+    depends_on:
+      - postgres
+      - api
+    networks:
+      - app_network
+
+  web:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.web
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - api
+    networks:
+      - app_network
+
+volumes:
+  pgdata:
+
+networks:
+  app_network:

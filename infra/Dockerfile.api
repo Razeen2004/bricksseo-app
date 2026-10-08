@@ -1,0 +1,23 @@
+FROM node:22-alpine
+
+WORKDIR /app
+
+# Copy root package.json and lockfile
+COPY package*.json ./
+COPY apps/api/package.json apps/api/
+COPY packages/shared/package.json packages/shared/
+
+# Install dependencies (only production for API)
+RUN npm install -w apps/api -w packages/shared --omit=dev
+
+# Copy API and Shared source code
+COPY packages/shared packages/shared
+COPY apps/api apps/api
+
+WORKDIR /app/apps/api
+
+# Generate Prisma client
+RUN npx prisma generate
+
+EXPOSE 4000
+CMD ["npm", "run", "start"]

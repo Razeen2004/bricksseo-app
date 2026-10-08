@@ -1,0 +1,365 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [citext, pgcrypto]
+}
+
+model User {
+  id                      String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email                   String    @unique
+  name                    String?
+  role                    String    @default("customer")
+  status                  String    @default("active")
+  
+  passwordHash            String    @map("password_hash")
+  mustChangePassword      Boolean   @default(false) @map("must_change_password")
+  tempPasswordCiphertext  String?   @map("temp_password_ciphertext")
+  tempPasswordExpiresAt   DateTime? @map("temp_password_expires_at") @db.Timestamptz()
+  
+  totpSecretCiphertext    String?   @map("totp_secret_ciphertext")
+  totpEnabledAt           DateTime? @map("totp_enabled_at") @db.Timestamptz()
+  recoveryCodesHash       Json?     @map("recovery_codes_hash")
+  
+  paddleCustomerId        String?   @unique @map("paddle_customer_id")
+  failedLoginCount        Int       @default(0) @map("failed_login_count")
+  lockedUntil             DateTime? @map("locked_until") @db.Timestamptz()
+  flagged                 Boolean   @default(false)
+  
+  createdAt               DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt               DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz()
+  lastLoginAt             DateTime? @map("last_login_at") @db.Timestamptz()
+  deletedAt               DateTime? @map("deleted_at") @db.Timestamptz()
+
+  sessions                Session[]
+  authTokens              AuthToken[]
+  licenses                License[]
+  subscriptions           Subscription[]
+  transactions            Transaction[]
+  emailLogs               EmailLog[]
+  auditLogs               AuditLog[]
+  settings                Setting[]
+
+  @@map("users")
+}
+
+model Session {
+  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId                 String    @map("user_id") @db.Uuid
+  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash              String    @unique @map("token_hash")
+  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  lastUsedAt             DateTime  @default(now()) @map("last_used_at") @db.Timestamptz()
+  idleExpiresAt          DateTime  @map("idle_expires_at") @db.Timestamptz()
+  absoluteExpiresAt      DateTime  @map("absolute_expires_at") @db.Timestamptz()
+  revokedAt              DateTime? @map("revoked_at") @db.Timestamptz()
+  ip                     String?   @db.Inet
+  userAgent              String?   @map("user_agent")
+  passwordChangeRequired Boolean   @default(false) @map("password_change_required")
+
+  @@map("sessions")
+}
+
+model AuthToken {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purpose   String
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz()
+  usedAt    DateTime? @map("used_at") @db.Timestamptz()
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  ip        String?   @db.Inet
+
+  @@map("auth_tokens")
+}
+
+model Plan {
+  code      String      @id
+  name      String
+  siteLimit Int?        @map("site_limit")
+  interval  String
+  sort      Int         @default(0)
+  active    Boolean     @default(true)
+  
+  prices    PlanPrice[]
+  licenses  License[]
+  subscriptions Subscription[]
+
+  @@map("plans")
+}
+
+model PlanPrice {
+  paddlePriceId   String  @id @map("paddle_price_id")
+  planCode        String  @map("plan_code")
+  plan            Plan    @relation(fields: [planCode], references: [code], onDelete: Cascade)
+  environment     String
+  paddleProductId String  @map("paddle_product_id")
+  active          Boolean @default(true)
+
+  @@map("plan_prices")
+}
+
+model License {
+  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId                String    @map("user_id") @db.Uuid
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planCode              String    @map("plan_code")
+  plan                  Plan      @relation(fields: [planCode], references: [code])
+  
+  keyHash               Bytes     @unique @map("key_hash")
+  keyCiphertext         String    @map("key_ciphertext")
+  keyHint               String    @map("key_hint")
+  
+  status                String    @default("active")
+  statusReason          String?   @map("status_reason")
+  
+  siteLimit             Int?      @map("site_limit")
+  issuedAt              DateTime  @default(now()) @map("issued_at") @db.Timestamptz()
+  expiresAt             DateTime? @map("expires_at") @db.Timestamptz()
+  
+  paddleSubscriptionId  String?   @map("paddle_subscription_id")
+  paddleTransactionId   String    @map("paddle_transaction_id")
+  itemIndex             Int       @map("item_index") @db.SmallInt
+  unitIndex             Int       @map("unit_index") @db.SmallInt
+  
+  notes                 String?
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt             DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz()
+  
+  activations           Activation[]
+  events                LicenseEvent[]
+  downloads             ReleaseDownload[]
+
+  @@unique([paddleTransactionId, itemIndex, unitIndex])
+  @@index([paddleSubscriptionId])
+  @@map("licenses")
+}
+
+model Subscription {
+  paddleSubscriptionId        String   @id @map("paddle_subscription_id")
+  userId                      String   @map("user_id") @db.Uuid
+  user                        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planCode                    String   @map("plan_code")
+  plan                        Plan     @relation(fields: [planCode], references: [code])
+  paddlePriceId               String   @map("paddle_price_id")
+  status                      String
+  
+  currentPeriodStart          DateTime @map("current_period_start") @db.Timestamptz()
+  currentPeriodEnd            DateTime @map("current_period_end") @db.Timestamptz()
+  
+  scheduledChangeAction       String?  @map("scheduled_change_action")
+  scheduledChangeEffectiveAt  DateTime? @map("scheduled_change_effective_at") @db.Timestamptz()
+  canceledAt                  DateTime? @map("canceled_at") @db.Timestamptz()
+  
+  currency                    String
+  unitPriceMinor              Int      @map("unit_price_minor")
+  lastEventAt                 DateTime @map("last_event_at") @db.Timestamptz()
+  updatedAt                   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz()
+
+  @@map("subscriptions")
+}
+
+model Transaction {
+  paddleTransactionId  String  @id @map("paddle_transaction_id")
+  userId               String  @map("user_id") @db.Uuid
+  user                 User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  paddleSubscriptionId String? @map("paddle_subscription_id")
+  origin               String
+  status               String
+  currency             String
+  
+  subtotalMinor        Int     @map("subtotal_minor")
+  discountMinor        Int     @map("discount_minor")
+  taxMinor             Int     @map("tax_minor")
+  totalMinor           Int     @map("total_minor")
+  
+  payoutCurrency       String? @map("payout_currency")
+  payoutEarningsMinor  Int?    @map("payout_earnings_minor")
+  payoutFeeMinor       Int?    @map("payout_fee_minor")
+  
+  countryCode          String? @map("country_code")
+  invoiceNumber        String? @map("invoice_number")
+  items                Json
+  
+  billedAt             DateTime @map("billed_at") @db.Timestamptz()
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  adjustments          Adjustment[]
+
+  @@map("transactions")
+}
+
+model Adjustment {
+  paddleAdjustmentId  String   @id @map("paddle_adjustment_id")
+  paddleTransactionId String   @map("paddle_transaction_id")
+  transaction         Transaction @relation(fields: [paddleTransactionId], references: [paddleTransactionId], onDelete: Cascade)
+  action              String
+  status              String
+  totalMinor          Int      @map("total_minor")
+  currency            String
+  reason              String
+  fullRefund          Boolean  @default(false) @map("full_refund")
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz()
+
+  @@map("adjustments")
+}
+
+model Activation {
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  licenseId           String    @map("license_id") @db.Uuid
+  license             License   @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+  siteKey             String    @map("site_key")
+  siteUrl             String    @map("site_url")
+  siteName            String    @map("site_name")
+  environment         String
+  countsTowardLimit   Boolean   @map("counts_toward_limit")
+  
+  pluginVersion       String?   @map("plugin_version")
+  wpVersion           String?   @map("wp_version")
+  phpVersion          String?   @map("php_version")
+  bricksVersion       String?   @map("bricks_version")
+  locale              String?
+  
+  firstActivatedAt    DateTime  @default(now()) @map("first_activated_at") @db.Timestamptz()
+  lastSeenAt          DateTime  @default(now()) @map("last_seen_at") @db.Timestamptz()
+  deactivatedAt       DateTime? @map("deactivated_at") @db.Timestamptz()
+  deactivatedBy       String?   @map("deactivated_by")
+  lastIp              String?   @map("last_ip") @db.Inet
+
+  downloads           ReleaseDownload[]
+
+  @@index([licenseId])
+  @@index([lastSeenAt])
+  @@map("activations")
+}
+
+model LicenseEvent {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  licenseId  String   @map("license_id") @db.Uuid
+  license    License  @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+  type       String
+  actor      String
+  meta       Json?
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  @@map("license_events")
+}
+
+model Release {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  version      String   @unique
+  versionSort  String   @map("version_sort")
+  channel      String   @default("stable")
+  status       String   @default("draft")
+  
+  summary      String?
+  changelogMd  String?  @map("changelog_md")
+  requiresWp   String?  @map("requires_wp")
+  requiresPhp  String?  @map("requires_php")
+  testedUpTo   String?  @map("tested_up_to")
+  
+  storageKey   String   @map("storage_key")
+  sizeBytes    Int      @map("size_bytes")
+  sha256       String
+  signature    String
+  
+  publishedAt  DateTime? @map("published_at") @db.Timestamptz()
+  createdBy    String?   @map("created_by") @db.Uuid
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+
+  downloads    ReleaseDownload[]
+
+  @@map("releases")
+}
+
+model ReleaseDownload {
+  id            String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  releaseId     String      @map("release_id") @db.Uuid
+  release       Release     @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  licenseId     String?     @map("license_id") @db.Uuid
+  license       License?    @relation(fields: [licenseId], references: [id], onDelete: SetNull)
+  activationId  String?     @map("activation_id") @db.Uuid
+  activation    Activation? @relation(fields: [activationId], references: [id], onDelete: SetNull)
+  kind          String
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz()
+
+  @@map("release_downloads")
+}
+
+model WebhookEvent {
+  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  paddleEventId        String    @unique @map("paddle_event_id")
+  paddleNotificationId String?   @map("paddle_notification_id")
+  eventType            String    @map("event_type")
+  occurredAt           DateTime  @map("occurred_at") @db.Timestamptz()
+  payload              Json
+  
+  status               String    @default("pending")
+  attempts             Int       @default(0)
+  lastError            String?   @map("last_error")
+  receivedAt           DateTime  @default(now()) @map("received_at") @db.Timestamptz()
+  processedAt          DateTime? @map("processed_at") @db.Timestamptz()
+
+  @@map("webhook_events")
+}
+
+model EmailLog {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId             String?   @map("user_id") @db.Uuid
+  user               User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  to                 String
+  template           String
+  subject            String
+  provider           String
+  providerMessageId  String?   @map("provider_message_id")
+  idempotencyKey     String?   @map("idempotency_key")
+  status             String
+  error              String?
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  sentAt             DateTime? @map("sent_at") @db.Timestamptz()
+
+  @@map("email_log")
+}
+
+model AuditLog {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  actorUserId  String?   @map("actor_user_id") @db.Uuid
+  user         User?     @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  actorLabel   String    @map("actor_label")
+  action       String
+  targetType   String    @map("target_type")
+  targetId     String    @map("target_id")
+  meta         Json?
+  ip           String?   @db.Inet
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+
+  @@map("audit_log")
+}
+
+model Setting {
+  key        String   @id
+  value      Json
+  updatedBy  String?  @map("updated_by") @db.Uuid
+  user       User?    @relation(fields: [updatedBy], references: [id], onDelete: SetNull)
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz()
+
+  @@map("settings")
+}
+
+model DailySnapshot {
+  date            DateTime @id @db.Date
+  activeLicenses  Int      @default(0) @map("active_licenses")
+  activeSites     Int      @default(0) @map("active_sites")
+  mrrMinorUsd     Int      @default(0) @map("mrr_minor_usd")
+  lifetimeSold    Int      @default(0) @map("lifetime_sold")
+  customersTotal  Int      @default(0) @map("customers_total")
+  breakdowns      Json
+
+  @@map("daily_snapshots")
+}

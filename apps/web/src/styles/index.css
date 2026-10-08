@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    background-color: #070709;
+    background-image: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(123, 121, 245, 0.12), transparent);
+    background-attachment: fixed;
+  }
+
+  ::selection {
+    background-color: rgba(123, 121, 245, 0.35);
+  }
+}

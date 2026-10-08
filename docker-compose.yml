@@ -1,0 +1,31 @@
+services:
+  postgres:
+    image: postgres:16
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: bricks_seo
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: bricks_seo_platform
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+  
+  postgres-test:
+    image: postgres:16
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: bricks_seo
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: bricks_seo_platform_test
+    tmpfs:
+      - /var/lib/postgresql/data
+      
+  mailpit:
+    image: axllent/mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+volumes:
+  postgres_data:
