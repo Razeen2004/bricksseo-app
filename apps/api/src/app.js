@@ -53,6 +53,9 @@ export async function buildApp(opts = {}) {
   const pluginRoutes = (await import('./modules/plugin-api/plugin.routes.js')).default;
   await app.register(pluginRoutes);
 
+  const publicRoutes = (await import('./modules/public/public.routes.js')).default;
+  await app.register(publicRoutes);
+
   // Auth and Account Routes
   const authRoutes = (await import('./modules/auth/auth.routes.js')).default;
   const accountRoutes = (await import('./modules/account/account.routes.js')).default;

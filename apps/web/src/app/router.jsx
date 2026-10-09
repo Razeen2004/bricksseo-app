@@ -16,6 +16,7 @@ import AdminAllSitesPage from '../features/admin/AllSitesPage';
 import AdminWebhooksPage from '../features/admin/WebhooksPage';
 import AdminLogsPage from '../features/admin/LogsPage';
 import AdminSettingsPage from '../features/admin/SettingsPage';
+import PayPage from '../features/checkout/PayPage';
 
 const router = createBrowserRouter([
   {
@@ -37,6 +38,7 @@ const router = createBrowserRouter([
       { path: 'admin/settings', element: <AdminSettingsPage /> },
     ],
   },
+  { path: '/pay', element: <PayPage /> },
   { path: '/login', element: <LoginPage /> },
   { path: '/forgot-password', element: <ForgotPasswordPage /> },
   { path: '/reset-password', element: <ResetPasswordPage /> },

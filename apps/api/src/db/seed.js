@@ -43,6 +43,12 @@ async function seed() {
     });
   }
 
+  // Deactivate any sandbox price this seed no longer lists (e.g. old placeholder IDs)
+  await prisma.planPrice.updateMany({
+    where: { environment: 'sandbox', paddlePriceId: { notIn: prices.map((p) => p.paddlePriceId) } },
+    data: { active: false }
+  });
+
   console.log('Seeding complete.');
 }
 
