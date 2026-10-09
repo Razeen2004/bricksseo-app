@@ -29,9 +29,7 @@ async function seed() {
 
   // Upsert Sandbox Prices
   const prices = [
-    { paddlePriceId: 'pri_01j95w', planCode: 'solo', environment: 'sandbox', paddleProductId: 'pro_1', active: true },
-    { paddlePriceId: 'pri_01j95x', planCode: 'studio', environment: 'sandbox', paddleProductId: 'pro_2', active: true },
-    { paddlePriceId: 'pri_01j95y', planCode: 'agency', environment: 'sandbox', paddleProductId: 'pro_3', active: true },
+    // Solo/Studio/Agency get a row here once their real sandbox price IDs exist in Paddle
     { paddlePriceId: 'pri_01m4ddea2vr6yjn0zen7ee1kgy', planCode: 'lifetime', environment: 'sandbox', paddleProductId: 'pro_4', active: true }
   ];
 
