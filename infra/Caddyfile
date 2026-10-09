@@ -1,4 +1,4 @@
-account.bricksseo.com {
+:80 {
     # Serve static React frontend
     root * /var/www/html
     encode gzip

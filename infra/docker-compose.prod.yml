@@ -85,12 +85,9 @@ services:
       context: ..
       dockerfile: infra/Dockerfile.web
     restart: always
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - caddy_data:/data
-      - caddy_config:/config
+    # No published ports and no TLS here: EasyPanel's own proxy terminates
+    # HTTPS for account.bricksseo.com and forwards to this container's port 80
+    # over the internal network — set that mapping in EasyPanel's Domains tab.
     depends_on:
       - api
     networks:
@@ -98,8 +95,6 @@ services:
 
 volumes:
   pgdata:
-  caddy_data:
-  caddy_config:
 
 networks:
   app_network:
