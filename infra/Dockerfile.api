@@ -1,5 +1,8 @@
 FROM node:22-alpine
 
+# Prisma detects the OpenSSL version by running the `openssl` binary; without it, it falls back to 1.1.x and loads the wrong engine
+RUN apk add --no-cache openssl
+
 WORKDIR /app
 
 # Copy root package.json and lockfile
