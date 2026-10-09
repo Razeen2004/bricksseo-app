@@ -9,14 +9,21 @@ export async function sendEmail({ to, template, data, idempotencyKey, userId = n
   let text = '';
   let html = '';
 
+  const keys = data.licenseKeys?.length ? data.licenseKeys : data.licenseKey ? [{ key: data.licenseKey }] : [];
+  const keysText = keys.map((k) => `${k.plan ? `${k.plan}: ` : ''}${k.key}`).join('\n');
+  const keysHtml = keys
+    .map((k) => `<p style="margin:4px 0">${k.plan ? `${k.plan}: ` : ''}<code style="font-size:15px"><strong>${k.key}</strong></code></p>`)
+    .join('');
+  const plural = keys.length > 1 ? 's' : '';
+
   if (template === 'welcome') {
-    subject = 'Welcome to Bricks SEO - Your License Key';
-    text = `Hello,\n\nYour username is: ${data.email}\nYour temporary password is: ${data.tempPassword}\n\nYour License Key: ${data.licenseKey}\n\nDashboard: ${env.APP_URL}`;
-    html = `<p>Hello,</p><p>Your username is: ${data.email}</p><p>Your temporary password is: <strong>${data.tempPassword}</strong></p><p>Your License Key: <strong>${data.licenseKey}</strong></p><p>Dashboard: <a href="${env.APP_URL}">${env.APP_URL}</a></p>`;
+    subject = 'Welcome to Bricks SEO - Your account and license key';
+    text = `Hello,\n\nThanks for your purchase. Your Bricks SEO account is ready.\n\nLog in: ${env.APP_URL}/login\nEmail: ${data.email}\nTemporary password: ${data.tempPassword}\n\nYou will be asked to choose a new password the first time you log in.\n\nYour license key${plural}:\n${keysText}\n\nPaste the key into Bricks SEO > License in your WordPress admin to activate it.`;
+    html = `<p>Hello,</p><p>Thanks for your purchase. Your Bricks SEO account is ready.</p><p><a href="${env.APP_URL}/login">Log in to your dashboard</a></p><p>Email: <strong>${data.email}</strong><br>Temporary password: <code><strong>${data.tempPassword}</strong></code></p><p>You will be asked to choose a new password the first time you log in.</p><p>Your license key${plural}:</p>${keysHtml}<p>Paste the key into Bricks SEO &gt; License in your WordPress admin to activate it.</p>`;
   } else if (template === 'new_license') {
-    subject = 'Your New Bricks SEO License';
-    text = `Hello,\n\nHere is your new License Key: ${data.licenseKey}\n\nLog in at ${env.APP_URL} with your existing password.`;
-    html = `<p>Hello,</p><p>Here is your new License Key: <strong>${data.licenseKey}</strong></p><p>Log in at <a href="${env.APP_URL}">${env.APP_URL}</a> with your existing password.</p>`;
+    subject = 'Your new Bricks SEO license';
+    text = `Hello,\n\nThanks for your purchase. Your new license key${plural}:\n${keysText}\n\nLog in at ${env.APP_URL}/login with your existing password to manage it.`;
+    html = `<p>Hello,</p><p>Thanks for your purchase. Your new license key${plural}:</p>${keysHtml}<p><a href="${env.APP_URL}/login">Log in to your dashboard</a> with your existing password to manage it.</p>`;
   } else if (template === 'password_reset') {
     const resetUrl = `${env.APP_URL}/reset-password?token=${data.token}`;
     subject = 'Reset your Bricks SEO password';

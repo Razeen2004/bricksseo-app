@@ -176,7 +176,8 @@ export async function processTransactionCompleted(payload) {
         data: {
           email,
           tempPassword: tempPasswordRaw,
-          licenseKey: generatedKeys[0].key // simplified for MVP
+          licenseKey: generatedKeys[0].key,
+          licenseKeys: generatedKeys
         },
         idempotencyKey: `fulfil:${txn.id}`
       }, { singletonKey: `email:fulfil:${txn.id}` });
