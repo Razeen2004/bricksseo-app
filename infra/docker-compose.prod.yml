@@ -2,9 +2,10 @@ services:
   postgres:
     image: postgres:15-alpine
     restart: always
+    env_file:
+      - ../.env
     environment:
       POSTGRES_USER: bricks_seo
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: bricks_seo_platform
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -16,30 +17,10 @@ services:
       context: ..
       dockerfile: infra/Dockerfile.api
     restart: always
-    environment:
-      # Explicit ${VAR} substitution, filled in from EasyPanel's Environment tab
-      # at compose-parse time (the bare "- VAR" pass-through form was not resolving here).
-      - APP_ENV=${APP_ENV}
-      - PORT=${PORT}
-      - APP_URL=${APP_URL}
-      - API_URL=${API_URL}
-      - MARKETING_URL=${MARKETING_URL}
-      # Always the compose-internal postgres container in prod, regardless of what DATABASE_URL is set to in the panel
-      - DATABASE_URL=postgresql://bricks_seo:${POSTGRES_PASSWORD}@postgres:5432/bricks_seo_platform
-      - APP_ENCRYPTION_KEYS=${APP_ENCRYPTION_KEYS}
-      - LICENSE_KEY_PEPPER=${LICENSE_KEY_PEPPER}
-      - PADDLE_ENV=${PADDLE_ENV}
-      - PADDLE_API_KEY=${PADDLE_API_KEY}
-      - PADDLE_WEBHOOK_SECRET=${PADDLE_WEBHOOK_SECRET}
-      - PADDLE_WEBHOOK_TOLERANCE_SECONDS=${PADDLE_WEBHOOK_TOLERANCE_SECONDS}
-      - PADDLE_CLIENT_TOKEN=${PADDLE_CLIENT_TOKEN}
-      - AUTO_CANCEL_SUBSCRIPTION_ON_REFUND=${AUTO_CANCEL_SUBSCRIPTION_ON_REFUND}
-      - EMAIL_PROVIDER=${EMAIL_PROVIDER}
-      - EMAIL_FROM=${EMAIL_FROM}
-      - ADMIN_ALERT_EMAIL=${ADMIN_ALERT_EMAIL}
-      - RESEND_API_KEY=${RESEND_API_KEY}
-      - STORAGE_DRIVER=${STORAGE_DRIVER}
-      - RELEASE_SIGNING_PUBLIC_KEY=${RELEASE_SIGNING_PUBLIC_KEY}
+    # Loads every var directly from the repo-root .env file EasyPanel writes from the
+    # Environment tab (compose-time ${VAR} substitution was not resolving on this host).
+    env_file:
+      - ../.env
     depends_on:
       - postgres
     networks:
@@ -51,27 +32,8 @@ services:
       dockerfile: infra/Dockerfile.api
     restart: always
     command: npm run worker:prod
-    environment:
-      - APP_ENV=${APP_ENV}
-      - PORT=${PORT}
-      - APP_URL=${APP_URL}
-      - API_URL=${API_URL}
-      - MARKETING_URL=${MARKETING_URL}
-      - DATABASE_URL=postgresql://bricks_seo:${POSTGRES_PASSWORD}@postgres:5432/bricks_seo_platform
-      - APP_ENCRYPTION_KEYS=${APP_ENCRYPTION_KEYS}
-      - LICENSE_KEY_PEPPER=${LICENSE_KEY_PEPPER}
-      - PADDLE_ENV=${PADDLE_ENV}
-      - PADDLE_API_KEY=${PADDLE_API_KEY}
-      - PADDLE_WEBHOOK_SECRET=${PADDLE_WEBHOOK_SECRET}
-      - PADDLE_WEBHOOK_TOLERANCE_SECONDS=${PADDLE_WEBHOOK_TOLERANCE_SECONDS}
-      - PADDLE_CLIENT_TOKEN=${PADDLE_CLIENT_TOKEN}
-      - AUTO_CANCEL_SUBSCRIPTION_ON_REFUND=${AUTO_CANCEL_SUBSCRIPTION_ON_REFUND}
-      - EMAIL_PROVIDER=${EMAIL_PROVIDER}
-      - EMAIL_FROM=${EMAIL_FROM}
-      - ADMIN_ALERT_EMAIL=${ADMIN_ALERT_EMAIL}
-      - RESEND_API_KEY=${RESEND_API_KEY}
-      - STORAGE_DRIVER=${STORAGE_DRIVER}
-      - RELEASE_SIGNING_PUBLIC_KEY=${RELEASE_SIGNING_PUBLIC_KEY}
+    env_file:
+      - ../.env
     depends_on:
       - postgres
       - api
