@@ -25,9 +25,6 @@ export const EnvSchema = z.object({
   STORAGE_DRIVER: z.enum(['local', 'r2']),
   RELEASE_SIGNING_PUBLIC_KEY: z.string().min(40),
 }).superRefine((env, ctx) => {
-  if (env.APP_ENV === 'production' && env.PADDLE_ENV !== 'production') {
-    ctx.addIssue({ code: 'custom', message: 'production APP_ENV must use PADDLE_ENV=production' });
-  }
   if (env.EMAIL_PROVIDER === 'resend' && !env.RESEND_API_KEY) {
     ctx.addIssue({ code: 'custom', message: 'RESEND_API_KEY is required when EMAIL_PROVIDER=resend', path: ['RESEND_API_KEY'] });
   }
