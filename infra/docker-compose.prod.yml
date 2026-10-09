@@ -17,29 +17,29 @@ services:
       dockerfile: infra/Dockerfile.api
     restart: always
     environment:
-      # Every var below is set in EasyPanel's Environment tab (it becomes a real
-      # process env var before `docker compose up` runs, so ${...} resolves from there).
-      - APP_ENV
-      - PORT
-      - APP_URL
-      - API_URL
-      - MARKETING_URL
+      # Explicit ${VAR} substitution, filled in from EasyPanel's Environment tab
+      # at compose-parse time (the bare "- VAR" pass-through form was not resolving here).
+      - APP_ENV=${APP_ENV}
+      - PORT=${PORT}
+      - APP_URL=${APP_URL}
+      - API_URL=${API_URL}
+      - MARKETING_URL=${MARKETING_URL}
       # Always the compose-internal postgres container in prod, regardless of what DATABASE_URL is set to in the panel
       - DATABASE_URL=postgresql://bricks_seo:${POSTGRES_PASSWORD}@postgres:5432/bricks_seo_platform
-      - APP_ENCRYPTION_KEYS
-      - LICENSE_KEY_PEPPER
-      - PADDLE_ENV
-      - PADDLE_API_KEY
-      - PADDLE_WEBHOOK_SECRET
-      - PADDLE_WEBHOOK_TOLERANCE_SECONDS
-      - PADDLE_CLIENT_TOKEN
-      - AUTO_CANCEL_SUBSCRIPTION_ON_REFUND
-      - EMAIL_PROVIDER
-      - EMAIL_FROM
-      - ADMIN_ALERT_EMAIL
-      - RESEND_API_KEY
-      - STORAGE_DRIVER
-      - RELEASE_SIGNING_PUBLIC_KEY
+      - APP_ENCRYPTION_KEYS=${APP_ENCRYPTION_KEYS}
+      - LICENSE_KEY_PEPPER=${LICENSE_KEY_PEPPER}
+      - PADDLE_ENV=${PADDLE_ENV}
+      - PADDLE_API_KEY=${PADDLE_API_KEY}
+      - PADDLE_WEBHOOK_SECRET=${PADDLE_WEBHOOK_SECRET}
+      - PADDLE_WEBHOOK_TOLERANCE_SECONDS=${PADDLE_WEBHOOK_TOLERANCE_SECONDS}
+      - PADDLE_CLIENT_TOKEN=${PADDLE_CLIENT_TOKEN}
+      - AUTO_CANCEL_SUBSCRIPTION_ON_REFUND=${AUTO_CANCEL_SUBSCRIPTION_ON_REFUND}
+      - EMAIL_PROVIDER=${EMAIL_PROVIDER}
+      - EMAIL_FROM=${EMAIL_FROM}
+      - ADMIN_ALERT_EMAIL=${ADMIN_ALERT_EMAIL}
+      - RESEND_API_KEY=${RESEND_API_KEY}
+      - STORAGE_DRIVER=${STORAGE_DRIVER}
+      - RELEASE_SIGNING_PUBLIC_KEY=${RELEASE_SIGNING_PUBLIC_KEY}
     depends_on:
       - postgres
     networks:
@@ -52,26 +52,26 @@ services:
     restart: always
     command: npm run worker:prod
     environment:
-      - APP_ENV
-      - PORT
-      - APP_URL
-      - API_URL
-      - MARKETING_URL
+      - APP_ENV=${APP_ENV}
+      - PORT=${PORT}
+      - APP_URL=${APP_URL}
+      - API_URL=${API_URL}
+      - MARKETING_URL=${MARKETING_URL}
       - DATABASE_URL=postgresql://bricks_seo:${POSTGRES_PASSWORD}@postgres:5432/bricks_seo_platform
-      - APP_ENCRYPTION_KEYS
-      - LICENSE_KEY_PEPPER
-      - PADDLE_ENV
-      - PADDLE_API_KEY
-      - PADDLE_WEBHOOK_SECRET
-      - PADDLE_WEBHOOK_TOLERANCE_SECONDS
-      - PADDLE_CLIENT_TOKEN
-      - AUTO_CANCEL_SUBSCRIPTION_ON_REFUND
-      - EMAIL_PROVIDER
-      - EMAIL_FROM
-      - ADMIN_ALERT_EMAIL
-      - RESEND_API_KEY
-      - STORAGE_DRIVER
-      - RELEASE_SIGNING_PUBLIC_KEY
+      - APP_ENCRYPTION_KEYS=${APP_ENCRYPTION_KEYS}
+      - LICENSE_KEY_PEPPER=${LICENSE_KEY_PEPPER}
+      - PADDLE_ENV=${PADDLE_ENV}
+      - PADDLE_API_KEY=${PADDLE_API_KEY}
+      - PADDLE_WEBHOOK_SECRET=${PADDLE_WEBHOOK_SECRET}
+      - PADDLE_WEBHOOK_TOLERANCE_SECONDS=${PADDLE_WEBHOOK_TOLERANCE_SECONDS}
+      - PADDLE_CLIENT_TOKEN=${PADDLE_CLIENT_TOKEN}
+      - AUTO_CANCEL_SUBSCRIPTION_ON_REFUND=${AUTO_CANCEL_SUBSCRIPTION_ON_REFUND}
+      - EMAIL_PROVIDER=${EMAIL_PROVIDER}
+      - EMAIL_FROM=${EMAIL_FROM}
+      - ADMIN_ALERT_EMAIL=${ADMIN_ALERT_EMAIL}
+      - RESEND_API_KEY=${RESEND_API_KEY}
+      - STORAGE_DRIVER=${STORAGE_DRIVER}
+      - RELEASE_SIGNING_PUBLIC_KEY=${RELEASE_SIGNING_PUBLIC_KEY}
     depends_on:
       - postgres
       - api
