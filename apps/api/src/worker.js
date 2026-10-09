@@ -43,7 +43,14 @@ async function handlePaymentFailed(payload) {
 async function startWorker() {
   const queue = await getQueue();
 
-  await queue.work('paddle.process_event', async (job) => {
+  // pg-boss v10 hands handlers an array of jobs
+  await queue.work('paddle.process_event', async (jobs) => {
+    for (const job of jobs) {
+      await processPaddleJob(job);
+    }
+  });
+
+  async function processPaddleJob(job) {
     const { paddleEventId } = job.data;
 
     const event = await prisma.webhookEvent.findUnique({
@@ -86,11 +93,13 @@ async function startWorker() {
       });
       throw err; // Trigger pg-boss retry
     }
-  });
+  }
 
   // Email sender processor
-  await queue.work('email.send', async (job) => {
-    await sendEmail(job.data);
+  await queue.work('email.send', async (jobs) => {
+    for (const job of jobs) {
+      await sendEmail(job.data);
+    }
   });
 
   console.log('Worker is running and listening for jobs...');
