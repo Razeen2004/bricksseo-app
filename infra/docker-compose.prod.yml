@@ -6,7 +6,7 @@ services:
     restart: always
     environment:
       POSTGRES_USER: bricks_seo
-      POSTGRES_PASSWORD: secure_db_password_here
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: bricks_seo_platform
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -19,11 +19,29 @@ services:
       dockerfile: infra/Dockerfile.api
     restart: always
     environment:
-      # Automatically connect to the postgres container
-      - DATABASE_URL=postgresql://bricks_seo:secure_db_password_here@postgres:5432/bricks_seo_platform
-      # (All other vars like PADDLE_API_KEY will be read from a local .env file on the server)
-    env_file:
-      - ../.env
+      # Every var below is set in EasyPanel's Environment tab (it becomes a real
+      # process env var before `docker compose up` runs, so ${...} resolves from there).
+      - APP_ENV
+      - PORT
+      - APP_URL
+      - API_URL
+      - MARKETING_URL
+      # Always the compose-internal postgres container in prod, regardless of what DATABASE_URL is set to in the panel
+      - DATABASE_URL=postgresql://bricks_seo:${POSTGRES_PASSWORD}@postgres:5432/bricks_seo_platform
+      - APP_ENCRYPTION_KEYS
+      - LICENSE_KEY_PEPPER
+      - PADDLE_ENV
+      - PADDLE_API_KEY
+      - PADDLE_WEBHOOK_SECRET
+      - PADDLE_WEBHOOK_TOLERANCE_SECONDS
+      - PADDLE_CLIENT_TOKEN
+      - AUTO_CANCEL_SUBSCRIPTION_ON_REFUND
+      - EMAIL_PROVIDER
+      - EMAIL_FROM
+      - ADMIN_ALERT_EMAIL
+      - RESEND_API_KEY
+      - STORAGE_DRIVER
+      - RELEASE_SIGNING_PUBLIC_KEY
     depends_on:
       - postgres
     networks:
@@ -36,9 +54,26 @@ services:
     restart: always
     command: npm run worker:prod
     environment:
-      - DATABASE_URL=postgresql://bricks_seo:secure_db_password_here@postgres:5432/bricks_seo_platform
-    env_file:
-      - ../.env
+      - APP_ENV
+      - PORT
+      - APP_URL
+      - API_URL
+      - MARKETING_URL
+      - DATABASE_URL=postgresql://bricks_seo:${POSTGRES_PASSWORD}@postgres:5432/bricks_seo_platform
+      - APP_ENCRYPTION_KEYS
+      - LICENSE_KEY_PEPPER
+      - PADDLE_ENV
+      - PADDLE_API_KEY
+      - PADDLE_WEBHOOK_SECRET
+      - PADDLE_WEBHOOK_TOLERANCE_SECONDS
+      - PADDLE_CLIENT_TOKEN
+      - AUTO_CANCEL_SUBSCRIPTION_ON_REFUND
+      - EMAIL_PROVIDER
+      - EMAIL_FROM
+      - ADMIN_ALERT_EMAIL
+      - RESEND_API_KEY
+      - STORAGE_DRIVER
+      - RELEASE_SIGNING_PUBLIC_KEY
     depends_on:
       - postgres
       - api
@@ -50,6 +85,12 @@ services:
       context: ..
       dockerfile: infra/Dockerfile.web
     restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
     depends_on:
       - api
     networks:
@@ -57,6 +98,8 @@ services:
 
 volumes:
   pgdata:
+  caddy_data:
+  caddy_config:
 
 networks:
   app_network:

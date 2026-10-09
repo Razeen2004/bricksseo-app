@@ -1,11 +1,15 @@
-:80 {
+account.bricksseo.com {
     # Serve static React frontend
     root * /var/www/html
-    try_files {path} /index.html
-    file_server
+    encode gzip
 
-    # Reverse proxy /v1 API requests to the Node backend
-    handle_path /v1/* {
+    # Reverse proxy /v1 API requests to the Node backend (path kept, NOT stripped)
+    handle /v1/* {
         reverse_proxy api:4000
+    }
+
+    handle {
+        try_files {path} /index.html
+        file_server
     }
 }
