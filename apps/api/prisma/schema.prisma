@@ -100,7 +100,7 @@ model PlanPrice {
   planCode        String  @map("plan_code")
   plan            Plan    @relation(fields: [planCode], references: [code], onDelete: Cascade)
   environment     String
-  paddleProductId String  @map("paddle_product_id")
+  paddleProductId String? @map("paddle_product_id")
   active          Boolean @default(true)
 
   @@map("plan_prices")

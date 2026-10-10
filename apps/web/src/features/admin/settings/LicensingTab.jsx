@@ -11,6 +11,14 @@ export default function LicensingTab({ data, onSaved }) {
     allowLocalhost: data.licensing.allowLocalhost,
   });
 
+  const [planIds, setPlanIds] = useState(
+    data.licensing.plans.map(p => ({ code: p.code, paddlePriceId: p.paddlePriceId || '', paddleProductId: p.paddleProductId || '' }))
+  );
+
+  function updatePlanId(code, field, value) {
+    setPlanIds(ids => ids.map(p => (p.code === code ? { ...p, [field]: value } : p)));
+  }
+
   const saveMutation = useMutation({
     mutationFn: (values) => apiFetch('/admin/settings', {
       method: 'PUT',
@@ -22,29 +30,71 @@ export default function LicensingTab({ data, onSaved }) {
     onSuccess: () => onSaved(),
   });
 
+  const savePlanIdsMutation = useMutation({
+    mutationFn: () => apiFetch('/admin/settings/plan-prices', { method: 'PUT', body: JSON.stringify({ plans: planIds }) }),
+    onSuccess: () => onSaved(),
+  });
+
   return (
     <div className="space-y-6">
       <div className="rounded-xl border border-border bg-card p-6">
-        <h2 className="font-semibold">Plans</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold">Plans</h2>
+          <span className="rounded-full bg-white/5 px-2.5 py-1 text-xs font-medium capitalize text-muted">{data.licensing.paddleEnv} IDs</span>
+        </div>
+        <p className="mt-1 text-sm text-muted">
+          Enter each plan's Paddle Price ID to make its <code className="font-mono text-xs">/pay</code> checkout link work. Product ID is optional reference info only — Paddle checkout uses the Price ID.
+        </p>
         <table className="mt-4 w-full text-left text-sm">
           <thead>
             <tr className="border-b border-border text-xs uppercase tracking-wide text-muted">
               <th className="py-2 font-medium">Plan</th>
-              <th className="py-2 font-medium">Type</th>
               <th className="py-2 font-medium">Sites</th>
+              <th className="py-2 font-medium">Price ID</th>
+              <th className="py-2 font-medium">Product ID</th>
             </tr>
           </thead>
           <tbody>
-            {data.licensing.plans.map(p => (
-              <tr key={p.code} className="border-b border-border last:border-0">
-                <td className="py-3 font-semibold">{p.name}</td>
-                <td className="py-3 text-muted">{p.interval}</td>
-                <td className="py-3 text-muted">{p.siteLimit ?? 'Unlimited'}</td>
-              </tr>
-            ))}
+            {data.licensing.plans.map(p => {
+              const ids = planIds.find(x => x.code === p.code) || { paddlePriceId: '', paddleProductId: '' };
+              return (
+                <tr key={p.code} className="border-b border-border last:border-0">
+                  <td className="py-3 pr-3 font-semibold">{p.name}</td>
+                  <td className="py-3 pr-3 text-muted">{p.siteLimit ?? 'Unlimited'}</td>
+                  <td className="py-2 pr-3">
+                    <input
+                      value={ids.paddlePriceId}
+                      onChange={e => updatePlanId(p.code, 'paddlePriceId', e.target.value)}
+                      placeholder="pri_..."
+                      className="w-full rounded-lg border border-border bg-black/30 px-2.5 py-1.5 font-mono text-xs focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                    />
+                  </td>
+                  <td className="py-2">
+                    <input
+                      value={ids.paddleProductId}
+                      onChange={e => updatePlanId(p.code, 'paddleProductId', e.target.value)}
+                      placeholder="pro_... (optional)"
+                      className="w-full rounded-lg border border-border bg-black/30 px-2.5 py-1.5 font-mono text-xs focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                    />
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
-        <p className="mt-4 text-sm text-muted">Plans are managed in Paddle. Changes sync automatically within a few minutes.</p>
+
+        {savePlanIdsMutation.isError && <p className="mt-3 text-sm text-danger">{savePlanIdsMutation.error.message}</p>}
+        {savePlanIdsMutation.isSuccess && <p className="mt-3 text-sm text-success">Saved.</p>}
+        <div className="mt-4 flex items-center justify-between">
+          <p className="text-sm text-muted">Plans themselves (name, site limit) are managed in code — these IDs just connect each one to Paddle.</p>
+          <button
+            onClick={() => savePlanIdsMutation.mutate()}
+            disabled={savePlanIdsMutation.isPending}
+            className="shrink-0 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-hover disabled:opacity-50"
+          >
+            {savePlanIdsMutation.isPending ? 'Saving…' : 'Save'}
+          </button>
+        </div>
       </div>
 
       <div className="rounded-xl border border-border bg-card p-6">

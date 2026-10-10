@@ -33,14 +33,17 @@ const SaveSchema = z.object({
 
 export default async function adminSettingsRoutes(fastify, opts) {
   fastify.get('/v1/admin/settings', { preHandler: [requireUser, requireAdmin] }, async (request, reply) => {
-    const [store, maintenance, licensing, smtp, notifications, plans] = await Promise.all([
+    const [store, maintenance, licensing, smtp, notifications, plans, planPrices] = await Promise.all([
       getSection('store'),
       getSection('maintenance'),
       getSection('licensing'),
       getSection('smtp'),
       getSection('notifications'),
-      prisma.plan.findMany({ orderBy: { sort: 'asc' } })
+      prisma.plan.findMany({ orderBy: { sort: 'asc' } }),
+      prisma.planPrice.findMany({ where: { environment: env.PADDLE_ENV, active: true } })
     ]);
+
+    const priceByPlan = new Map(planPrices.map((p) => [p.planCode, p]));
 
     const [firstName, ...lastNameParts] = (request.user.name || '').split(' ');
 
@@ -56,7 +59,18 @@ export default async function adminSettingsRoutes(fastify, opts) {
       maintenance,
       licensing: {
         ...licensing,
-        plans: plans.map(p => ({ code: p.code, name: p.name, siteLimit: p.siteLimit, interval: p.interval }))
+        paddleEnv: env.PADDLE_ENV,
+        plans: plans.map(p => {
+          const price = priceByPlan.get(p.code);
+          return {
+            code: p.code,
+            name: p.name,
+            siteLimit: p.siteLimit,
+            interval: p.interval,
+            paddlePriceId: price?.paddlePriceId ?? '',
+            paddleProductId: price?.paddleProductId ?? ''
+          };
+        })
       },
       integrations: {
         paddle: {
@@ -103,6 +117,75 @@ export default async function adminSettingsRoutes(fastify, opts) {
       action: 'settings.update',
       targetType: 'settings',
       targetId: section,
+      ip: request.ip
+    });
+
+    return reply.status(200).send({ ok: true });
+  });
+
+  const PlanPriceSaveSchema = z.object({
+    plans: z.array(z.object({
+      code: z.string().min(1),
+      paddlePriceId: z.string().trim().max(64),
+      paddleProductId: z.string().trim().max(64)
+    }))
+  });
+
+  fastify.put('/v1/admin/settings/plan-prices', { preHandler: [requireUser, requireAdmin] }, async (request, reply) => {
+    const { plans: incoming } = PlanPriceSaveSchema.parse(request.body);
+
+    const validCodes = new Set((await prisma.plan.findMany({ select: { code: true } })).map((p) => p.code));
+    for (const p of incoming) {
+      if (!validCodes.has(p.code)) {
+        throw new AppError('validation_failed', 400, `Unknown plan code: ${p.code}`);
+      }
+      if (!p.paddlePriceId && p.paddleProductId) {
+        throw new AppError('validation_failed', 400, `${p.code}: enter a Price ID before saving a Product ID.`);
+      }
+    }
+
+    await prisma.$transaction(async (tx) => {
+      for (const p of incoming) {
+        if (!p.paddlePriceId) {
+          // No price set for this plan — deactivate whatever was there before, leave it unconfigured.
+          await tx.planPrice.updateMany({
+            where: { planCode: p.code, environment: env.PADDLE_ENV },
+            data: { active: false }
+          });
+          continue;
+        }
+
+        // Replacing a plan's price ID shouldn't leave the old row active.
+        await tx.planPrice.updateMany({
+          where: { planCode: p.code, environment: env.PADDLE_ENV, paddlePriceId: { not: p.paddlePriceId } },
+          data: { active: false }
+        });
+
+        await tx.planPrice.upsert({
+          where: { paddlePriceId: p.paddlePriceId },
+          create: {
+            paddlePriceId: p.paddlePriceId,
+            planCode: p.code,
+            environment: env.PADDLE_ENV,
+            paddleProductId: p.paddleProductId || null,
+            active: true
+          },
+          update: {
+            planCode: p.code,
+            environment: env.PADDLE_ENV,
+            paddleProductId: p.paddleProductId || null,
+            active: true
+          }
+        });
+      }
+    });
+
+    await writeAuditLog({
+      actorUserId: request.user.id,
+      action: 'settings.plan_prices.update',
+      targetType: 'settings',
+      targetId: 'licensing.plan_prices',
+      meta: { environment: env.PADDLE_ENV, plans: incoming },
       ip: request.ip
     });
 
