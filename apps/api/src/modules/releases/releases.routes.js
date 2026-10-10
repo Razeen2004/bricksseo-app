@@ -10,6 +10,7 @@ import { AppError } from '../../lib/errors.js';
 import { requireUser } from '../../http/auth.js';
 import { effectiveLicenseStatus } from '../licenses/effective-status.js';
 import { normalizeSiteUrl } from '../activations/normalize-site.js';
+import { hashKey } from '../licenses/keygen.js';
 
 // Setup local storage directory
 const STORAGE_DIR = path.resolve(process.cwd(), 'storage/releases');
@@ -186,7 +187,8 @@ export default async function releaseRoutes(fastify, opts) {
     if (!license_key || !site_url) return reply.status(200).send({}); // Send nothing if invalid
 
     // Hash key and find license
-    const keyHash = crypto.createHmac('sha256', process.env.LICENSE_KEY_PEPPER).update(license_key).digest();
+    // Match the normalization used by activation, so formatted keys with hyphens work too.
+    const keyHash = hashKey(license_key);
     const license = await prisma.license.findUnique({ where: { keyHash } });
 
     if (!license || effectiveLicenseStatus(license) !== 'active') {
