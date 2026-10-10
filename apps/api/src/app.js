@@ -81,7 +81,14 @@ export async function buildApp(opts = {}) {
   await app.register(adminEmailTemplatesRoutes);
 
   // Releases Routes
-  await app.register((await import('@fastify/multipart')).default);
+  await app.register((await import('@fastify/multipart')).default, {
+    limits: {
+      fileSize: 1024 * 1024 * 1024,
+      files: 1,
+      fields: 2,
+      parts: 3,
+    },
+  });
   const releasesRoutes = (await import('./modules/releases/releases.routes.js')).default;
   await app.register(releasesRoutes);
 

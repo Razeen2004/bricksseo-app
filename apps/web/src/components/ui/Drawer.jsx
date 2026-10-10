@@ -19,7 +19,7 @@ export default function Drawer({ open, title, onClose, children }) {
   if (!shouldRender) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex justify-end">
+    <div className="fixed inset-0 z-[100] flex justify-end m-0 p-0">
       <div 
         className={`absolute inset-0 bg-black/60 transition-opacity duration-300 ${animateIn ? 'opacity-100' : 'opacity-0'}`} 
         onClick={onClose} 

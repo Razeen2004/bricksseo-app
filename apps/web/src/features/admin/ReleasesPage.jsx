@@ -30,7 +30,7 @@ export default function AdminReleasesPage() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || 'Failed to upload release');
+        throw new Error(err.error?.message || err.message || 'Failed to upload release');
       }
       return res.json();
     },

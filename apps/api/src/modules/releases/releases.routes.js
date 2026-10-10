@@ -2,6 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
 import { pipeline } from 'stream/promises';
+import { Transform } from 'stream';
 import { createWriteStream } from 'fs';
 import { z } from 'zod';
 import { prisma } from '../../db/prisma.js';
@@ -38,14 +39,27 @@ export default async function releaseRoutes(fastify, opts) {
         const filePath = path.join(STORAGE_DIR, fileName);
         
         const hash = crypto.createHash('sha256');
-        const writeStream = createWriteStream(filePath);
-        
-        for await (const chunk of part.file) {
-          hash.update(chunk);
-          writeStream.write(chunk);
-          sizeBytes += chunk.length;
+        const hashAndCount = new Transform({
+          transform(chunk, encoding, callback) {
+            hash.update(chunk);
+            sizeBytes += chunk.length;
+            callback(null, chunk);
+          }
+        });
+
+        try {
+          await pipeline(part.file, hashAndCount, createWriteStream(filePath));
+        } catch (error) {
+          await fs.rm(filePath, { force: true });
+          if (part.file.truncated || error.code === 'FST_REQ_FILE_TOO_LARGE') {
+            throw new AppError('file_too_large', 413, 'Release ZIP exceeds the 1 GiB upload limit.');
+          }
+          throw error;
         }
-        writeStream.end();
+        if (part.file.truncated) {
+          await fs.rm(filePath, { force: true });
+          throw new AppError('file_too_large', 413, 'Release ZIP exceeds the 1 GiB upload limit.');
+        }
         sha256 = hash.digest('hex');
       } else {
         if (part.fieldname === 'version') version = part.value;
