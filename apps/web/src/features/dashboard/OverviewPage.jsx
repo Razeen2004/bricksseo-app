@@ -189,7 +189,7 @@ export default function OverviewPage() {
           <BookOpen size={18} className="text-accent-hover" />
           <h3 className="mt-3 font-semibold">Read the docs</h3>
           <p className="mt-1 text-sm text-muted">Setup guides, hooks, troubleshooting.</p>
-          <a href="#" className="mt-2 inline-block text-sm text-accent-hover hover:underline">Open docs →</a>
+          <a href="https://bricksseo.com/docs/" className="mt-2 inline-block text-sm text-accent-hover hover:underline">Open docs →</a>
         </div>
         <div className="rounded-xl border border-border bg-card p-5">
           <MessageCircle size={18} className="text-accent-hover" />
@@ -201,7 +201,7 @@ export default function OverviewPage() {
           <Sparkles size={18} className="text-accent-hover" />
           <h3 className="mt-3 font-semibold">What's new</h3>
           <p className="mt-1 text-sm text-muted">Latest release notes and improvements.</p>
-          <a href="#" className="mt-2 inline-block text-sm text-accent-hover hover:underline">View changelog →</a>
+          <a href="https://bricksseo.com/changelog/" className="mt-2 inline-block text-sm text-accent-hover hover:underline">View changelog →</a>
         </div>
       </div>
 

@@ -13,6 +13,7 @@ const DEFAULTS = {
   maintenance: { enabled: false },
   licensing: { gracePeriodDays: 7, maxSiteActivationsOverride: null, domainValidation: true, allowLocalhost: true },
   smtp: { host: '', port: 587, username: '', password: '', fromName: 'Bricks SEO', fromAddress: env.EMAIL_FROM },
+  email: { provider: 'env' },
   notifications: {
     customerEmails: { purchaseConfirmation: true, licenseExpiryReminder: true, paymentFailed: true, refundProcessed: true },
     adminAlerts: { newPurchase: false, newCustomerSignup: false, paymentFailure: true, refundIssued: true },
@@ -20,7 +21,7 @@ const DEFAULTS = {
   }
 };
 
-const SECTIONS = ['store', 'admin', 'maintenance', 'licensing', 'smtp', 'notifications'];
+const SECTIONS = ['store', 'admin', 'maintenance', 'licensing', 'smtp', 'email', 'notifications'];
 
 async function getSection(key) {
   return getSettingSection(key, DEFAULTS[key]);
@@ -33,11 +34,12 @@ const SaveSchema = z.object({
 
 export default async function adminSettingsRoutes(fastify, opts) {
   fastify.get('/v1/admin/settings', { preHandler: [requireUser, requireAdmin] }, async (request, reply) => {
-    const [store, maintenance, licensing, smtp, notifications, plans, planPrices] = await Promise.all([
+    const [store, maintenance, licensing, smtp, emailSettings, notifications, plans, planPrices] = await Promise.all([
       getSection('store'),
       getSection('maintenance'),
       getSection('licensing'),
       getSection('smtp'),
+      getSection('email'),
       getSection('notifications'),
       prisma.plan.findMany({ orderBy: { sort: 'asc' } }),
       prisma.planPrice.findMany({ where: { environment: env.PADDLE_ENV, active: true } })
@@ -79,6 +81,11 @@ export default async function adminSettingsRoutes(fastify, opts) {
           webhookSecret: env.PADDLE_WEBHOOK_SECRET,
           webhookUrl: `${env.API_URL}/v1/webhooks/paddle`
         },
+        email: {
+          provider: emailSettings.provider,
+          envDefault: env.EMAIL_PROVIDER,
+          resendConfigured: !!env.RESEND_API_KEY
+        },
         smtp
       },
       notifications
@@ -87,6 +94,10 @@ export default async function adminSettingsRoutes(fastify, opts) {
 
   fastify.put('/v1/admin/settings', { preHandler: [requireUser, requireAdmin] }, async (request, reply) => {
     const { section, values } = SaveSchema.parse(request.body);
+
+    if (section === 'email' && !['env', 'resend', 'smtp'].includes(values.provider)) {
+      throw new AppError('validation_failed', 400, 'Invalid email provider.');
+    }
 
     if (section === 'admin') {
       const data = {

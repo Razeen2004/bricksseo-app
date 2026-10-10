@@ -26,12 +26,26 @@ function MaskedField({ label, value, help }) {
   );
 }
 
+const PROVIDER_LABELS = {
+  env: 'Environment default',
+  resend: 'Resend',
+  smtp: 'Custom SMTP'
+};
+
 export default function IntegrationsTab({ data, onSaved }) {
   const [smtp, setSmtp] = useState(data.integrations.smtp);
   const [showSmtpPassword, setShowSmtpPassword] = useState(false);
+  const [provider, setProvider] = useState(data.integrations.email.provider);
+
+  const activeProvider = provider === 'env' ? data.integrations.email.envDefault : provider;
 
   const saveMutation = useMutation({
     mutationFn: (values) => apiFetch('/admin/settings', { method: 'PUT', body: JSON.stringify({ section: 'smtp', values }) }),
+    onSuccess: () => onSaved(),
+  });
+
+  const providerMutation = useMutation({
+    mutationFn: (values) => apiFetch('/admin/settings', { method: 'PUT', body: JSON.stringify({ section: 'email', values: { provider: values } }) }),
     onSuccess: () => onSaved(),
   });
 
@@ -59,8 +73,41 @@ export default function IntegrationsTab({ data, onSaved }) {
       </div>
 
       <div className="rounded-xl border border-border bg-card p-6">
-        <h2 className="font-semibold">Email (SMTP)</h2>
-        <p className="mt-1 text-sm text-muted">Transactional emails (license keys, receipts) are sent via SMTP. Resend, Postmark, and SendGrid all work.</p>
+        <h2 className="font-semibold">Email provider</h2>
+        <p className="mt-1 text-sm text-muted">
+          Which service actually sends transactional email (license keys, receipts, password resets). Takes effect immediately — no redeploy needed.
+        </p>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <select
+            value={provider}
+            onChange={e => { setProvider(e.target.value); providerMutation.mutate(e.target.value); }}
+            className="rounded-lg border border-border bg-black/30 px-3 py-2 text-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+          >
+            <option value="env">{`Environment default (currently: ${data.integrations.email.envDefault})`}</option>
+            <option value="resend">Resend</option>
+            <option value="smtp">Custom SMTP</option>
+          </select>
+          <span className="text-sm text-muted">Active right now: <strong className="text-ink">{PROVIDER_LABELS[activeProvider] || activeProvider}</strong></span>
+          {providerMutation.isPending && <span className="text-sm text-muted">Saving…</span>}
+        </div>
+        {activeProvider === 'resend' && !data.integrations.email.resendConfigured && (
+          <p className="mt-3 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
+            Resend is selected but <code className="font-mono">RESEND_API_KEY</code> isn't set in the environment — sending will fail until it's added.
+          </p>
+        )}
+        {providerMutation.isError && <p className="mt-3 text-sm text-danger">{providerMutation.error.message}</p>}
+      </div>
+
+      <div className="rounded-xl border border-border bg-card p-6">
+        <h2 className="font-semibold">Custom SMTP</h2>
+        <p className="mt-1 text-sm text-muted">
+          Only used when "Custom SMTP" is selected above. Works with your own mail server or any provider's SMTP endpoint (Mailgun, SendGrid, Postmark, Resend's own SMTP, etc.).
+        </p>
+        {activeProvider !== 'smtp' && (
+          <p className="mt-2 rounded-lg bg-white/5 px-3 py-2 text-sm text-muted">
+            SMTP isn't the active provider right now, so these fields have no effect until you select "Custom SMTP" above.
+          </p>
+        )}
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className="mb-1.5 block text-sm font-medium">SMTP host</label>
@@ -100,7 +147,7 @@ export default function IntegrationsTab({ data, onSaved }) {
         </div>
 
         {saveMutation.isError && <p className="mt-3 text-sm text-danger">{saveMutation.error.message}</p>}
-        {testEmailMutation.isSuccess && <p className="mt-3 text-sm text-success">Test email sent — check Mailpit / your inbox.</p>}
+        {testEmailMutation.isSuccess && <p className="mt-3 text-sm text-success">Test email sent — check your inbox.</p>}
         {testEmailMutation.isError && <p className="mt-3 text-sm text-danger">{testEmailMutation.error.message}</p>}
 
         <div className="mt-4 flex items-center justify-between">

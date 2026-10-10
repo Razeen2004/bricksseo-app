@@ -117,7 +117,7 @@ export default function SitesPage() {
                   <td className="px-6 py-3 font-mono text-xs text-muted">{s.licenseKeyHint}</td>
                   <td className="px-6 py-3 text-muted">{s.wpVersion || '—'}</td>
                   <td className="px-6 py-3 text-muted">{s.pluginVersion || '—'}</td>
-                  <td className="px-6 py-3 text-muted">{s.status === 'removed' ? formatDate(s.deactivatedAt) : timeAgo(s.lastSeenAt)}</td>
+                  {/* <td className="px-6 py-3 text-muted">{s.status === 'removed' ? formatDate(s.deactivatedAt) : timeAgo(s.lastSeenAt)}</td> */}
                   <td className="px-6 py-3 text-right">
                     {s.status !== 'removed' ? (
                       <button

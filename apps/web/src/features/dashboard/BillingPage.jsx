@@ -73,9 +73,11 @@ export default function BillingPage() {
       {isLoading ? (
         <p className="text-sm text-muted">Loading…</p>
       ) : !subscription ? (
-        <div className="rounded-xl border border-border bg-card p-8 text-center text-muted">
-          No active subscription found. If you bought a lifetime license, billing is handled through Paddle at checkout only.
-        </div>
+        // <div className="rounded-xl border border-border bg-card p-8 text-center text-muted">
+        //   No active subscription found. If you bought a lifetime license, billing is handled through Paddle at checkout only.
+        // </div>
+        <>
+        </>
       ) : (
         <div className="rounded-xl border border-border bg-card p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
