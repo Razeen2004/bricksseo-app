@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '../../lib/api';
 import { Upload, PackageOpen, Download } from 'lucide-react';
+import toast from 'react-hot-toast';
+import Skeleton from '../../components/ui/Skeleton';
 
 export default function AdminReleasesPage() {
   const queryClient = useQueryClient();
@@ -23,6 +25,7 @@ export default function AdminReleasesPage() {
       const res = await fetch('/v1/admin/releases', {
         method: 'POST',
         body: formData,
+        credentials: 'include',
         // Don't set Content-Type header, browser will set it automatically with the boundary
       });
       if (!res.ok) {
@@ -38,10 +41,12 @@ export default function AdminReleasesPage() {
       setFile(null);
       setIsUploading(false);
       setUploadError('');
+      toast.success('Release published successfully!');
     },
     onError: (err) => {
       setUploadError(err.message);
       setIsUploading(false);
+      toast.error('Upload failed: ' + err.message);
     }
   });
 
@@ -149,7 +154,11 @@ export default function AdminReleasesPage() {
         </div>
         
         {isLoading ? (
-          <p className="px-6 pb-6 text-sm text-muted">Loading...</p>
+          <div className="p-6 space-y-4">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
         ) : releases.length === 0 ? (
           <p className="px-6 pb-6 text-sm text-muted">No releases published yet.</p>
         ) : (
