@@ -7,7 +7,8 @@ import { createWriteStream } from 'fs';
 import { z } from 'zod';
 import { prisma } from '../../db/prisma.js';
 import { AppError } from '../../lib/errors.js';
-import { requireUser } from '../../http/auth.js';
+import { requireUser, requireAdmin } from '../../http/auth.js';
+import { writeAuditLog } from '../../lib/audit.js';
 import { effectiveLicenseStatus } from '../licenses/effective-status.js';
 import { normalizeSiteUrl } from '../activations/normalize-site.js';
 import { hashKey } from '../licenses/keygen.js';
@@ -21,11 +22,7 @@ export default async function releaseRoutes(fastify, opts) {
   // --------------------------------------------------------
   // ADMIN: Upload a new release
   // --------------------------------------------------------
-  fastify.post('/v1/admin/releases', { preHandler: [requireUser] }, async (request, reply) => {
-    // In a real app, verify request.user.role === 'admin'
-    // For MVP, we assume if you are here, you are the admin, but let's enforce a basic check if role exists.
-    // Assuming role doesn't exist yet, we will just allow it or rely on a specific admin email.
-    
+  fastify.post('/v1/admin/releases', { preHandler: [requireUser, requireAdmin] }, async (request, reply) => {
     const parts = request.parts();
     let version, changelogMd;
     let sizeBytes = 0;
@@ -94,7 +91,7 @@ export default async function releaseRoutes(fastify, opts) {
     return reply.status(200).send({ ok: true, release });
   });
 
-  fastify.get('/v1/admin/releases', { preHandler: [requireUser] }, async (request, reply) => {
+  fastify.get('/v1/admin/releases', { preHandler: [requireUser, requireAdmin] }, async (request, reply) => {
     const releases = await prisma.release.findMany({
       orderBy: { versionSort: 'desc' },
       include: {
@@ -102,6 +99,31 @@ export default async function releaseRoutes(fastify, opts) {
       }
     });
     return reply.status(200).send({ ok: true, releases });
+  });
+
+  fastify.delete('/v1/admin/releases/:id', { preHandler: [requireUser, requireAdmin] }, async (request, reply) => {
+    const release = await prisma.release.findUnique({ where: { id: request.params.id } });
+    if (!release) throw new AppError('not_found', 404, 'Release not found');
+
+    // Release storage keys are generated as root-level filenames during upload.
+    // Reject unexpected paths so a corrupted record cannot delete outside this directory.
+    if (path.basename(release.storageKey) !== release.storageKey) {
+      throw new AppError('invalid_release_storage', 500, 'Release storage key is invalid');
+    }
+
+    const filePath = path.join(STORAGE_DIR, release.storageKey);
+    await fs.rm(filePath, { force: true });
+    await prisma.release.delete({ where: { id: release.id } });
+    await writeAuditLog({
+      actorUserId: request.user.id,
+      action: 'release.delete',
+      targetType: 'release',
+      targetId: release.id,
+      meta: { version: release.version, storageKey: release.storageKey },
+      ip: request.ip
+    });
+
+    return reply.status(200).send({ ok: true });
   });
 
   // --------------------------------------------------------

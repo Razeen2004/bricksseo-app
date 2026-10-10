@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '../../lib/api';
-import { Upload, PackageOpen, Download } from 'lucide-react';
+import { Upload, PackageOpen, Download, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Skeleton from '../../components/ui/Skeleton';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 
 export default function AdminReleasesPage() {
   const queryClient = useQueryClient();
@@ -13,6 +14,7 @@ export default function AdminReleasesPage() {
   const [version, setVersion] = useState('');
   const [changelog, setChangelog] = useState('');
   const [file, setFile] = useState(null);
+  const [releaseToDelete, setReleaseToDelete] = useState(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['adminReleases'],
@@ -48,6 +50,16 @@ export default function AdminReleasesPage() {
       setIsUploading(false);
       toast.error('Upload failed: ' + err.message);
     }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id) => apiFetch(`/admin/releases/${id}`, { method: 'DELETE' }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['adminReleases'] });
+      toast.success('Release deleted.');
+      setReleaseToDelete(null);
+    },
+    onError: (error) => toast.error(error.message || 'Failed to delete release')
   });
 
   const handleUpload = (e) => {
@@ -170,6 +182,7 @@ export default function AdminReleasesPage() {
                 <th className="px-6 py-2 font-medium">Size</th>
                 <th className="px-6 py-2 font-medium">Hash</th>
                 <th className="px-6 py-2 font-medium">Downloads</th>
+                <th className="px-6 py-2 font-medium"><span className="sr-only">Actions</span></th>
               </tr>
             </thead>
             <tbody>
@@ -188,12 +201,36 @@ export default function AdminReleasesPage() {
                       <Download size={14} /> {release._count.downloads}
                     </span>
                   </td>
+                  <td className="px-6 py-3 text-right">
+                    <button
+                      type="button"
+                      onClick={() => { deleteMutation.reset(); setReleaseToDelete(release); }}
+                      aria-label={`Delete release ${release.version}`}
+                      title={`Delete ${release.version}`}
+                      className="rounded-md p-2 text-muted hover:bg-danger/10 hover:text-danger focus:outline-none focus:ring-2 focus:ring-danger"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         )}
       </div>
+
+      <ConfirmDialog
+        open={Boolean(releaseToDelete)}
+        title={`Delete release ${releaseToDelete?.version}?`}
+        description="This permanently removes the ZIP and release record. Download history for this release will also be deleted."
+        requireText={releaseToDelete?.version || null}
+        confirmLabel="Delete release"
+        danger
+        pending={deleteMutation.isPending}
+        error={deleteMutation.error?.message}
+        onConfirm={() => releaseToDelete && deleteMutation.mutate(releaseToDelete.id)}
+        onCancel={() => { setReleaseToDelete(null); deleteMutation.reset(); }}
+      />
     </div>
   );
 }
