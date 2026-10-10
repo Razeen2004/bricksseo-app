@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Search, Download, MoreHorizontal } from 'lucide-react';
+import { Search, Download, MoreHorizontal, Trash2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { apiFetch } from '../../lib/api';
 import { formatMoney, timeAgo } from '../../lib/format';
 import StatCard from '../../components/ui/StatCard';
@@ -16,6 +17,7 @@ export default function CustomersPage() {
   const [page, setPage] = useState(1);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [confirmAction, setConfirmAction] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
   const queryClient = useQueryClient();
 
@@ -35,6 +37,22 @@ export default function CustomersPage() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: ({ ids, password }) => apiFetch('/admin/customers', {
+      method: 'DELETE',
+      body: JSON.stringify({ ids, password }),
+    }),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-customers'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-licenses'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-sites'] });
+      setSelectedIds([]);
+      setConfirmDelete(null);
+      toast.success(`${result.deleted} customer${result.deleted === 1 ? '' : 's'} deleted.`);
+    },
+    onError: (error) => toast.error(error.message || 'Could not delete customers'),
+  });
+
   function runAction(customer, action, needsPassword) {
     setOpenMenuId(null);
     if (needsPassword) {
@@ -45,19 +63,35 @@ export default function CustomersPage() {
   }
 
   function updateFilter(setter) {
-    return (value) => { setter(value); setPage(1); };
+    return (value) => { setter(value); setPage(1); setSelectedIds([]); };
   }
 
   const customers = data?.customers ?? [];
   const stats = data?.stats ?? {};
-  const allSelected = customers.length > 0 && selectedIds.length === customers.length;
+  const allSelected = customers.length > 0 && customers.every(customer => selectedIds.includes(customer.id));
 
   function toggleAll() {
-    setSelectedIds(allSelected ? [] : customers.map(c => c.id));
+    setSelectedIds(current => {
+      const next = allSelected
+        ? current.filter(id => !customers.some(customer => customer.id === id))
+        : [...new Set([...current, ...customers.map(customer => customer.id)])];
+      if (next.length > 500) {
+        toast.error('You can delete up to 500 customers at a time.');
+        return current;
+      }
+      return next;
+    });
   }
 
   function toggleOne(id) {
-    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+    setSelectedIds(prev => {
+      if (prev.includes(id)) return prev.filter(x => x !== id);
+      if (prev.length >= 500) {
+        toast.error('You can delete up to 500 customers at a time.');
+        return prev;
+      }
+      return [...prev, id];
+    });
   }
 
   return (
@@ -81,7 +115,7 @@ export default function CustomersPage() {
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
             <input
               value={search}
-              onChange={e => { setSearch(e.target.value); setPage(1); }}
+              onChange={e => { setSearch(e.target.value); setPage(1); setSelectedIds([]); }}
               placeholder="Search by email or domain..."
               className="w-full rounded-lg border border-border bg-black/30 py-2 pl-9 pr-3 text-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
             />
@@ -114,6 +148,15 @@ export default function CustomersPage() {
           >
             <Download size={14} /> Export CSV
           </a>
+          {selectedIds.length > 0 && (
+            <button
+              type="button"
+              onClick={() => { deleteMutation.reset(); setConfirmDelete({ ids: selectedIds, email: null }); }}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-danger/40 px-3 py-1.5 text-sm font-medium text-danger hover:bg-danger/10"
+            >
+              <Trash2 size={14} /> Delete selected ({selectedIds.length})
+            </button>
+          )}
         </div>
 
         {isLoading ? (
@@ -158,6 +201,12 @@ export default function CustomersPage() {
                         <button onClick={() => runAction(c, 'reset-password', false)} className="block w-full px-3 py-2 text-sm hover:bg-white/5">Send password reset</button>
                         <button onClick={() => runAction(c, 'toggle-status', true)} className="block w-full px-3 py-2 text-sm hover:bg-white/5">{c.status === 'active' ? 'Disable account' : 'Enable account'}</button>
                         <button onClick={() => runAction(c, 'toggle-flag', true)} className="block w-full px-3 py-2 text-sm text-danger hover:bg-white/5">{c.flagged ? 'Unflag' : 'Flag'} customer</button>
+                        <button
+                          onClick={() => { setOpenMenuId(null); deleteMutation.reset(); setConfirmDelete({ ids: [c.id], email: c.email }); }}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-sm text-danger hover:bg-white/5"
+                        >
+                          <Trash2 size={14} /> Delete customer
+                        </button>
                       </div>
                     )}
                   </td>
@@ -167,7 +216,7 @@ export default function CustomersPage() {
           </table>
         )}
 
-        {data && <Pagination page={data.page} pageSize={data.pageSize} total={data.total} onPageChange={setPage} />}
+        {data && <Pagination page={data.page} pageSize={data.pageSize} total={data.total} onPageChange={nextPage => { setPage(nextPage); setSelectedIds([]); }} />}
       </div>
 
       <p className="text-sm text-muted">Impersonation and bulk revocations are written to the activity log. <a href="/admin/logs" className="text-accent-hover hover:underline">View logs →</a></p>
@@ -181,6 +230,19 @@ export default function CustomersPage() {
         error={actionMutation.isError ? actionMutation.error.message : null}
         onCancel={() => setConfirmAction(null)}
         onConfirm={({ password }) => actionMutation.mutate({ id: confirmAction.customer.id, action: confirmAction.action, password })}
+      />
+      <ConfirmDialog
+        open={Boolean(confirmDelete)}
+        title={confirmDelete?.email ? 'Delete this customer?' : `Delete ${confirmDelete?.ids.length ?? 0} customers?`}
+        description="This permanently deletes the selected customer accounts, licenses, activations, sessions, and related purchase records. Type the confirmation text and enter your admin password."
+        requireText={confirmDelete?.email ?? 'DELETE USERS'}
+        requirePassword
+        danger
+        confirmLabel="Delete customers"
+        pending={deleteMutation.isPending}
+        error={deleteMutation.error?.message}
+        onCancel={() => { setConfirmDelete(null); deleteMutation.reset(); }}
+        onConfirm={({ password }) => deleteMutation.mutate({ ids: confirmDelete.ids, password })}
       />
     </div>
   );

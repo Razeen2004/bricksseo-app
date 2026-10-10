@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Search, Download, Copy, Eye, MoreHorizontal } from 'lucide-react';
+import { Search, Download, Copy, Eye, MoreHorizontal, Trash2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { apiFetch } from '../../lib/api';
 import { formatDate } from '../../lib/format';
 import StatCard from '../../components/ui/StatCard';
@@ -18,6 +19,7 @@ export default function AllLicensesPage() {
   const [revealed, setRevealed] = useState({});
   const [openMenuId, setOpenMenuId] = useState(null);
   const [confirmAction, setConfirmAction] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
   const queryClient = useQueryClient();
 
@@ -42,20 +44,52 @@ export default function AllLicensesPage() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: ({ ids, password }) => apiFetch('/admin/licenses', {
+      method: 'DELETE',
+      body: JSON.stringify({ ids, password }),
+    }),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-licenses'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-customers'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-sites'] });
+      setSelectedIds([]);
+      setConfirmDelete(null);
+      toast.success(`${result.deleted} license${result.deleted === 1 ? '' : 's'} deleted.`);
+    },
+    onError: (error) => toast.error(error.message || 'Could not delete licenses'),
+  });
+
   function updateFilter(setter) {
-    return (value) => { setter(value); setPage(1); };
+    return (value) => { setter(value); setPage(1); setSelectedIds([]); };
   }
 
   const licenses = data?.licenses ?? [];
   const stats = data?.stats ?? {};
-  const allSelected = licenses.length > 0 && selectedIds.length === licenses.length;
+  const allSelected = licenses.length > 0 && licenses.every(license => selectedIds.includes(license.id));
 
   function toggleAll() {
-    setSelectedIds(allSelected ? [] : licenses.map(l => l.id));
+    setSelectedIds(current => {
+      const next = allSelected
+        ? current.filter(id => !licenses.some(license => license.id === id))
+        : [...new Set([...current, ...licenses.map(license => license.id)])];
+      if (next.length > 500) {
+        toast.error('You can delete up to 500 licenses at a time.');
+        return current;
+      }
+      return next;
+    });
   }
 
   function toggleOne(id) {
-    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+    setSelectedIds(prev => {
+      if (prev.includes(id)) return prev.filter(x => x !== id);
+      if (prev.length >= 500) {
+        toast.error('You can delete up to 500 licenses at a time.');
+        return prev;
+      }
+      return [...prev, id];
+    });
   }
 
   return (
@@ -78,7 +112,7 @@ export default function AllLicensesPage() {
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
             <input
               value={search}
-              onChange={e => { setSearch(e.target.value); setPage(1); }}
+              onChange={e => { setSearch(e.target.value); setPage(1); setSelectedIds([]); }}
               placeholder="Search by key or email..."
               className="w-full rounded-lg border border-border bg-black/30 py-2 pl-9 pr-3 text-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
             />
@@ -111,6 +145,15 @@ export default function AllLicensesPage() {
           >
             <Download size={14} /> Export CSV
           </a>
+          {selectedIds.length > 0 && (
+            <button
+              type="button"
+              onClick={() => { deleteMutation.reset(); setConfirmDelete({ ids: selectedIds, keyHint: null }); }}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-danger/40 px-3 py-1.5 text-sm font-medium text-danger hover:bg-danger/10"
+            >
+              <Trash2 size={14} /> Delete selected ({selectedIds.length})
+            </button>
+          )}
         </div>
 
         {isLoading ? (
@@ -166,6 +209,12 @@ export default function AllLicensesPage() {
                         ) : (
                           <button onClick={() => { setOpenMenuId(null); setConfirmAction({ license: l, action: 'revoke' }); }} className="block w-full px-3 py-2 text-sm text-danger hover:bg-white/5">Revoke</button>
                         )}
+                        <button
+                          onClick={() => { setOpenMenuId(null); deleteMutation.reset(); setConfirmDelete({ ids: [l.id], keyHint: l.keyHint }); }}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-sm text-danger hover:bg-white/5"
+                        >
+                          <Trash2 size={14} /> Delete license
+                        </button>
                       </div>
                     )}
                   </td>
@@ -175,7 +224,7 @@ export default function AllLicensesPage() {
           </table>
         )}
 
-        {data && <Pagination page={data.page} pageSize={data.pageSize} total={data.total} onPageChange={setPage} />}
+        {data && <Pagination page={data.page} pageSize={data.pageSize} total={data.total} onPageChange={nextPage => { setPage(nextPage); setSelectedIds([]); }} />}
       </div>
 
       <p className="text-sm text-muted">Revoking or deleting a license deactivates its sites straight away. Every action is written to the activity log. <a href="/admin/logs" className="text-accent-hover hover:underline">View logs →</a></p>
@@ -191,6 +240,19 @@ export default function AllLicensesPage() {
         error={actionMutation.isError ? actionMutation.error.message : null}
         onCancel={() => setConfirmAction(null)}
         onConfirm={({ password }) => actionMutation.mutate({ id: confirmAction.license.id, action: confirmAction.action, password })}
+      />
+      <ConfirmDialog
+        open={Boolean(confirmDelete)}
+        title={confirmDelete?.keyHint ? 'Delete this license?' : `Delete ${confirmDelete?.ids.length ?? 0} licenses?`}
+        description="This permanently deletes the selected licenses, activations, and license event history. Related download records remain but lose their license reference. Type the confirmation text and enter your admin password."
+        requireText={confirmDelete?.keyHint ?? 'DELETE LICENSES'}
+        requirePassword
+        danger
+        confirmLabel="Delete licenses"
+        pending={deleteMutation.isPending}
+        error={deleteMutation.error?.message}
+        onCancel={() => { setConfirmDelete(null); deleteMutation.reset(); }}
+        onConfirm={({ password }) => deleteMutation.mutate({ ids: confirmDelete.ids, password })}
       />
     </div>
   );

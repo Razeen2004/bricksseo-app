@@ -71,8 +71,8 @@ export default function AdminDataPage() {
     setBusy(true);
     setError('');
     try {
-      const result = await sendImport(false);
-      setPreview(result.summary);
+      await sendImport(false);
+      setPreview(null);
       setConfirmImport(false);
       toast.success('Backup imported successfully.');
       setBackup(null);
@@ -80,6 +80,7 @@ export default function AdminDataPage() {
     } catch (err) {
       setError(err.message);
       setConfirmImport(false);
+      setPreview(null);
     } finally {
       setBusy(false);
     }
@@ -96,7 +97,7 @@ export default function AdminDataPage() {
       <section className="rounded-xl border border-border bg-card p-6">
         <h2 className="flex items-center gap-2 text-lg font-semibold"><Archive size={18} /> Export a portable backup</h2>
         <p className="mt-2 text-sm text-muted">
-          Includes customer names and account status, license keys and status, plan codes, limits, expiry dates, notes, and all activation records. It does not include passwords, payment history, or Paddle subscriptions.
+          Includes customer profile state, license keys and status, plans, limits, expiry dates, notes, license events, and full activation records. It does not include passwords, payment history, or Paddle subscriptions.
         </p>
         <div className="mt-4 rounded-lg bg-amber-500/10 p-3 text-sm text-amber-200">
           The backup contains working license keys. Store the downloaded file securely and delete it when the transfer is complete.
@@ -112,7 +113,7 @@ export default function AdminDataPage() {
       <section className="rounded-xl border border-border bg-card p-6">
         <h2 className="flex items-center gap-2 text-lg font-semibold"><FileUp size={18} /> Import a backup</h2>
         <p className="mt-2 text-sm text-muted">
-          Import is additive. Existing accounts and licenses are kept as they are; matching license keys are skipped. New keys are re-hashed and encrypted with this server’s secrets, so activation and license checks continue to work even when the source and destination use different keys.
+          Import restores the exported profile, license, event, and activation state for matching customers and keys. Missing records are recreated. Data created after the backup but absent from it is left untouched. Keys are re-hashed and encrypted with this server’s secrets, so plugin license checks continue to work even when source and destination use different keys.
         </p>
         <p className="mt-2 text-sm text-muted">
           Restored sites stay attached to their licenses. New customer accounts receive a random inaccessible password and must use “Forgot password” to set one.
@@ -146,9 +147,9 @@ export default function AdminDataPage() {
             <h3 className="font-semibold">Preview</h3>
             <dl className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
               <div><dt className="text-muted">Customers to create</dt><dd>{preview.customersToCreate}</dd></div>
-              <div><dt className="text-muted">Existing customers to keep</dt><dd>{preview.existingCustomers}</dd></div>
+              <div><dt className="text-muted">Customers to restore</dt><dd>{preview.customersToRestore}</dd></div>
               <div><dt className="text-muted">Licenses to create</dt><dd>{preview.licensesToCreate}</dd></div>
-              <div><dt className="text-muted">Existing licenses to skip</dt><dd>{preview.existingLicensesSkipped}</dd></div>
+              <div><dt className="text-muted">Licenses to restore</dt><dd>{preview.licensesToRestore}</dd></div>
               <div><dt className="text-muted">Activation records to restore</dt><dd>{preview.activationsToRestore}</dd></div>
             </dl>
             <button

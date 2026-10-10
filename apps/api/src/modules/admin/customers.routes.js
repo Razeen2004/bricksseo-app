@@ -17,8 +17,34 @@ function randomString(length) {
 }
 
 const PasswordConfirmSchema = z.object({ password: z.string().min(1) });
+const DeleteCustomersSchema = z.object({ ids: z.array(z.string().uuid()).min(1).max(500), password: z.string().min(1) });
 
 export default async function adminCustomersRoutes(fastify, opts) {
+  fastify.delete('/v1/admin/customers', { preHandler: [requireUser, requireAdmin] }, async (request, reply) => {
+    const { ids, password } = DeleteCustomersSchema.parse(request.body);
+    if (new Set(ids).size !== ids.length) throw new AppError('validation_failed', 400, 'Customer IDs must be unique.');
+    if (ids.includes(request.user.id)) throw new AppError('forbidden', 403, 'You cannot delete your own admin account.');
+    await verifyAdminPassword(request.user, password);
+
+    const deleted = await prisma.$transaction(async tx => {
+      const users = await tx.user.findMany({ where: { id: { in: ids }, role: 'customer' }, select: { id: true, email: true } });
+      if (users.length !== ids.length) throw new AppError('not_found', 404, 'One or more selected customers do not exist.');
+      await tx.user.deleteMany({ where: { id: { in: ids }, role: 'customer' } });
+      await tx.auditLog.createMany({ data: users.map(user => ({
+        actorUserId: request.user.id,
+        actorLabel: `admin:${request.user.id}`,
+        action: 'customer.delete',
+        targetType: 'user',
+        targetId: user.id,
+        meta: { email: user.email },
+        ip: request.ip
+      })) });
+      return users;
+    });
+
+    return reply.send({ ok: true, deleted: deleted.length });
+  });
+
   fastify.get('/v1/admin/customers', { preHandler: [requireUser, requireAdmin] }, async (request, reply) => {
     const { search = '', status = 'all', sort = 'newest', page = '1' } = request.query;
     const pageNum = Math.max(1, parseInt(page, 10) || 1);

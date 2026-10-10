@@ -8,6 +8,7 @@ import { effectiveLicenseStatus } from '../licenses/effective-status.js';
 import { decryptKey } from '../licenses/keygen.js';
 
 const PasswordConfirmSchema = z.object({ password: z.string().min(1) });
+const DeleteLicensesSchema = z.object({ ids: z.array(z.string().uuid()).min(1).max(500), password: z.string().min(1) });
 
 function serialize(l) {
   const sitesUsed = l.activations.filter(a => !a.deactivatedAt).length;
@@ -27,6 +28,33 @@ function serialize(l) {
 }
 
 export default async function adminLicensesRoutes(fastify, opts) {
+  fastify.delete('/v1/admin/licenses', { preHandler: [requireUser, requireAdmin] }, async (request, reply) => {
+    const { ids, password } = DeleteLicensesSchema.parse(request.body);
+    if (new Set(ids).size !== ids.length) throw new AppError('validation_failed', 400, 'License IDs must be unique.');
+    await verifyAdminPassword(request.user, password);
+
+    const deleted = await prisma.$transaction(async tx => {
+      const licenses = await tx.license.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, keyHint: true, user: { select: { email: true } } }
+      });
+      if (licenses.length !== ids.length) throw new AppError('not_found', 404, 'One or more selected licenses do not exist.');
+      await tx.license.deleteMany({ where: { id: { in: ids } } });
+      await tx.auditLog.createMany({ data: licenses.map(license => ({
+        actorUserId: request.user.id,
+        actorLabel: `admin:${request.user.id}`,
+        action: 'license.delete',
+        targetType: 'license',
+        targetId: license.id,
+        meta: { keyHint: license.keyHint, customerEmail: license.user.email },
+        ip: request.ip
+      })) });
+      return licenses;
+    });
+
+    return reply.send({ ok: true, deleted: deleted.length });
+  });
+
   fastify.get('/v1/admin/licenses', { preHandler: [requireUser, requireAdmin] }, async (request, reply) => {
     const { search = '', status = 'all', sort = 'newest', page = '1' } = request.query;
     const pageNum = Math.max(1, parseInt(page, 10) || 1);

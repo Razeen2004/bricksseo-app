@@ -6,7 +6,6 @@ import { requireUser, requireAdmin } from '../../http/auth.js';
 import { AppError } from '../../lib/errors.js';
 import { writeAuditLog } from '../../lib/audit.js';
 import { decryptKey, encryptKey, hashKey, normalizeKey } from '../licenses/keygen.js';
-import { effectiveLicenseStatus } from '../licenses/effective-status.js';
 
 const MAX_BACKUP_BYTES = 20 * 1024 * 1024;
 const MAX_CUSTOMERS = 10_000;
@@ -47,7 +46,7 @@ export function validateBackup(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
     return { errors: ['Backup must be a JSON object.'], customers };
   }
-  if (input.format !== 'bricksseo-data-export' || input.version !== 1) {
+  if (input.format !== 'bricksseo-data-export' || ![1, 2].includes(input.version)) {
     errors.push('Unsupported backup format or version. Export a fresh backup from Bricks SEO.');
   }
   if (!Array.isArray(input.customers) || input.customers.length > MAX_CUSTOMERS) {
@@ -92,6 +91,28 @@ export function validateBackup(input) {
       const expiresAt = parseDate(license.expiresAt, `${label} expiresAt`, errors);
       const statusReason = optionalString(license.statusReason, `${label} statusReason`, errors, 200);
       const notes = optionalString(license.notes, `${label} notes`, errors, 4000);
+      const keyHint = optionalString(license.keyHint, `${label} keyHint`, errors, 100);
+      let events = null;
+      if (license.events !== undefined) {
+        if (!Array.isArray(license.events)) errors.push(`${label} events must be an array.`);
+        events = (Array.isArray(license.events) ? license.events : []).map((event, eventIndex) => {
+          const eventLabel = `${label}, event ${eventIndex + 1}`;
+          if (!event || typeof event !== 'object' || Array.isArray(event)) {
+            errors.push(`${eventLabel} must be an object.`);
+            return null;
+          }
+          if (typeof event.type !== 'string' || !event.type) errors.push(`${eventLabel} requires type.`);
+          if (typeof event.actor !== 'string' || !event.actor) errors.push(`${eventLabel} requires actor.`);
+          const meta = event.meta === undefined ? null : event.meta;
+          if (meta !== null && (typeof meta !== 'object' || Array.isArray(meta))) errors.push(`${eventLabel} meta must be an object or null.`);
+          return {
+            type: event.type,
+            actor: event.actor,
+            meta,
+            createdAt: parseDate(event.createdAt, `${eventLabel} createdAt`, errors, false)
+          };
+        }).filter(Boolean);
+      }
       if (!Array.isArray(license.activations)) errors.push(`${label} activations must be an array.`);
       const activations = (Array.isArray(license.activations) ? license.activations : []).map((activation, activationIndex) => {
         activationCount++;
@@ -126,8 +147,8 @@ export function validateBackup(input) {
       });
       return {
         key, planCode: typeof license.planCode === 'string' ? license.planCode.trim() : '',
-        status: licenseStatus, statusReason, siteLimit, issuedAt, expiresAt, notes,
-        activations: activations.filter(Boolean)
+        keyHint, status: licenseStatus, statusReason, siteLimit, issuedAt, expiresAt, notes,
+        activations: activations.filter(Boolean), events
       };
     }).filter(Boolean);
     customers.push({ email, name, status, flagged: customer.flagged ?? false, licenses });
@@ -142,6 +163,28 @@ function asIso(value) {
   return value ? new Date(value).toISOString() : null;
 }
 
+export async function restoreActivations(tx, licenseId, activations) {
+  const current = await tx.activation.findMany({ where: { licenseId }, select: { id: true, siteKey: true } });
+  const bySiteKey = new Map();
+  for (const activation of current) {
+    const queue = bySiteKey.get(activation.siteKey) ?? [];
+    queue.push(activation.id);
+    bySiteKey.set(activation.siteKey, queue);
+  }
+  const keptIds = [];
+  for (const activation of activations) {
+    const id = bySiteKey.get(activation.siteKey)?.shift();
+    if (id) {
+      await tx.activation.update({ where: { id }, data: activation });
+      keptIds.push(id);
+    } else {
+      const created = await tx.activation.create({ data: { ...activation, licenseId }, select: { id: true } });
+      keptIds.push(created.id);
+    }
+  }
+  await tx.activation.deleteMany({ where: { licenseId, ...(keptIds.length ? { id: { notIn: keptIds } } : {}) } });
+}
+
 export default async function adminDataRoutes(fastify) {
   fastify.get('/v1/admin/data/export.json', { preHandler: [requireUser, requireAdmin] }, async (request, reply) => {
     const users = await prisma.user.findMany({
@@ -150,15 +193,13 @@ export default async function adminDataRoutes(fastify) {
       include: {
         licenses: {
           orderBy: { issuedAt: 'asc' },
-          include: { activations: { orderBy: { firstActivatedAt: 'asc' } } }
+          include: {
+            activations: { orderBy: { firstActivatedAt: 'asc' } },
+            events: { orderBy: { createdAt: 'asc' } }
+          }
         }
       }
     });
-    const subscriptionIds = users.flatMap(user => user.licenses.map(license => license.paddleSubscriptionId).filter(Boolean));
-    const subscriptions = subscriptionIds.length
-      ? await prisma.subscription.findMany({ where: { paddleSubscriptionId: { in: subscriptionIds } } })
-      : [];
-    const subscriptionsById = new Map(subscriptions.map(subscription => [subscription.paddleSubscriptionId, subscription]));
     const customers = users.map(user => ({
       email: user.email,
       name: user.name,
@@ -166,17 +207,20 @@ export default async function adminDataRoutes(fastify) {
       flagged: user.flagged,
       licenses: user.licenses.map(license => ({
         key: decryptKey(license.keyCiphertext),
+        keyHint: license.keyHint,
         planCode: license.planCode,
-        // Flatten subscription-derived entitlement state so imported keys keep
-        // their current activate/recheck behavior without importing Paddle objects.
-        status: ['revoked', 'suspended'].includes(effectiveLicenseStatus(license, subscriptionsById.get(license.paddleSubscriptionId)))
-          ? effectiveLicenseStatus(license, subscriptionsById.get(license.paddleSubscriptionId))
-          : license.status,
+        status: license.status,
         statusReason: license.statusReason,
         siteLimit: license.siteLimit,
         issuedAt: asIso(license.issuedAt),
         expiresAt: asIso(license.expiresAt),
         notes: license.notes,
+        events: license.events.map(event => ({
+          type: event.type,
+          actor: event.actor,
+          meta: event.meta,
+          createdAt: asIso(event.createdAt)
+        })),
         activations: license.activations.map(activation => ({
           siteKey: activation.siteKey,
           siteUrl: activation.siteUrl,
@@ -196,7 +240,7 @@ export default async function adminDataRoutes(fastify) {
         }))
       }))
     }));
-    const backup = { format: 'bricksseo-data-export', version: 1, exportedAt: new Date().toISOString(), customers };
+    const backup = { format: 'bricksseo-data-export', version: 2, exportedAt: new Date().toISOString(), customers };
 
     await writeAuditLog({
       actorUserId: request.user.id,
@@ -242,7 +286,6 @@ export default async function adminDataRoutes(fastify) {
     for (const customer of validated.customers) {
       const user = usersByEmail.get(customer.email);
       if (user?.role !== undefined && user.role !== 'customer') errors.push(`${customer.email} already belongs to a non-customer account.`);
-      else if (user?.deletedAt) errors.push(`${customer.email} belongs to a deleted account and cannot be imported.`);
       else if (user) existingCustomerCount++;
       else newCustomerCount++;
 
@@ -253,25 +296,23 @@ export default async function adminDataRoutes(fastify) {
         if (existingOwner) {
           if (!user || existingOwner !== user.id) errors.push(`${customer.email}: this license key is already assigned to another account.`);
           else existingLicenseCount++;
-        } else {
-          newLicenseCount++;
-          activationCount += license.activations.length;
-        }
+        } else newLicenseCount++;
+        activationCount += license.activations.length;
       }
     }
     if (errors.length) return reply.status(409).send({ ok: false, errors: errors.slice(0, 100), errorCount: errors.length });
 
     const summary = {
       customersToCreate: newCustomerCount,
-      existingCustomers: existingCustomerCount,
+      customersToRestore: existingCustomerCount,
       licensesToCreate: newLicenseCount,
-      existingLicensesSkipped: existingLicenseCount,
+      licensesToRestore: existingLicenseCount,
       activationsToRestore: activationCount
     };
     if (dryRun) return reply.send({ ok: true, dryRun: true, summary });
 
-    // Additive import: existing customer accounts and license records are never overwritten.
-    // Use an inaccessible random password for new accounts; users set their own via password reset.
+    // Restore the exported customer/license state. New accounts get an inaccessible random
+    // password; the owner can set one using the password reset flow.
     const importedPasswordHash = newCustomerCount
       ? await argon2.hash(crypto.randomBytes(32).toString('base64url'))
       : null;
@@ -284,7 +325,7 @@ export default async function adminDataRoutes(fastify) {
       const importedUsers = new Map();
       for (const customer of validated.customers) {
         let user = txUsersByEmail.get(customer.email);
-        if (user && (user.role !== 'customer' || user.deletedAt)) {
+        if (user && user.role !== 'customer') {
           throw new AppError('import_conflict', 409, `Customer ${customer.email} cannot be imported into the existing account.`);
         }
         if (!user) {
@@ -301,62 +342,81 @@ export default async function adminDataRoutes(fastify) {
             select: { id: true, email: true, role: true, deletedAt: true }
           });
           txUsersByEmail.set(customer.email, user);
+        } else {
+          user = await tx.user.update({
+            where: { id: user.id },
+            data: { name: customer.name, status: customer.status, flagged: customer.flagged, deletedAt: null },
+            select: { id: true, email: true, role: true, deletedAt: true }
+          });
+          txUsersByEmail.set(customer.email, user);
         }
         importedUsers.set(customer.email, user);
       }
 
       const txExistingLicenses = await tx.license.findMany({
         where: { keyHash: { in: hashes } },
-        select: { userId: true, keyHash: true }
+        select: { id: true, userId: true, keyHash: true }
       });
-      const importedHashOwner = new Map(txExistingLicenses.map(license => [Buffer.from(license.keyHash).toString('hex'), license.userId]));
+      const importedHashOwner = new Map(txExistingLicenses.map(license => [Buffer.from(license.keyHash).toString('hex'), license]));
       let licensesCreated = 0;
-      let activationsCreated = 0;
+      let licensesRestored = 0;
+      let activationsRestored = 0;
       for (const customer of validated.customers) {
         const user = importedUsers.get(customer.email);
         for (const license of customer.licenses) {
           const keyHash = hashKey(license.key);
           const hashHex = keyHash.toString('hex');
-          const existingOwner = importedHashOwner.get(hashHex);
+          const existingLicense = importedHashOwner.get(hashHex);
+          const existingOwner = existingLicense?.userId;
           if (existingOwner) {
             if (existingOwner !== user.id) throw new AppError('import_conflict', 409, `A license key for ${customer.email} is assigned to another account.`);
-            continue;
           }
-          const createdLicense = await tx.license.create({
-            data: {
-              userId: user.id,
-              planCode: license.planCode,
-              keyHash,
-              keyCiphertext: encryptKey(license.key),
-              keyHint: `${license.key.slice(0, 4)}-••••-••••-${license.key.slice(-4)}`,
-              status: license.status,
-              statusReason: license.statusReason,
-              siteLimit: license.siteLimit,
-              issuedAt: license.issuedAt,
-              expiresAt: license.expiresAt,
-              notes: license.notes,
-              paddleTransactionId: `import:${crypto.randomUUID()}`,
-              itemIndex: 0,
-              unitIndex: 0
-            }
-          });
-          importedHashOwner.set(hashHex, user.id);
-          licensesCreated++;
-          if (license.activations.length) {
-            await tx.activation.createMany({ data: license.activations.map(activation => ({ ...activation, licenseId: createdLicense.id })) });
-            activationsCreated += license.activations.length;
+          const licenseData = {
+            userId: user.id,
+            planCode: license.planCode,
+            keyHash,
+            keyCiphertext: encryptKey(license.key),
+            keyHint: license.keyHint || `${license.key.slice(0, 4)}-••••-••••-${license.key.slice(-4)}`,
+            status: license.status,
+            statusReason: license.statusReason,
+            siteLimit: license.siteLimit,
+            issuedAt: license.issuedAt,
+            expiresAt: license.expiresAt,
+            notes: license.notes
+          };
+          let restoredLicense;
+          if (existingLicense) {
+            restoredLicense = await tx.license.update({ where: { id: existingLicense.id }, data: licenseData });
+            licensesRestored++;
+          } else {
+            restoredLicense = await tx.license.create({
+              data: {
+                ...licenseData,
+                paddleTransactionId: `import:${crypto.randomUUID()}`,
+                itemIndex: 0,
+                unitIndex: 0
+              }
+            });
+            importedHashOwner.set(hashHex, { id: restoredLicense.id, userId: user.id });
+            licensesCreated++;
           }
-          await tx.licenseEvent.create({
-            data: {
-              licenseId: createdLicense.id,
-              type: 'imported',
-              actor: `admin:${request.user.id}`,
-              meta: { source: 'bricksseo-data-export' }
+          await restoreActivations(tx, restoredLicense.id, license.activations);
+          activationsRestored += license.activations.length;
+          if (license.events !== null) {
+            await tx.licenseEvent.deleteMany({ where: { licenseId: restoredLicense.id } });
+            if (license.events.length) {
+              await tx.licenseEvent.createMany({ data: license.events.map(event => ({
+                licenseId: restoredLicense.id,
+                type: event.type,
+                actor: event.actor,
+                ...(event.meta !== null ? { meta: event.meta } : {}),
+                createdAt: event.createdAt
+              })) });
             }
-          });
+          }
         }
       }
-      return { licensesCreated, activationsCreated };
+      return { licensesCreated, licensesRestored, activationsRestored };
     }, { maxWait: 10_000, timeout: 120_000 });
 
     await writeAuditLog({
