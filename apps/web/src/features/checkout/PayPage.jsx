@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { apiFetch } from '../../lib/api';
 import Logo from '../../components/ui/Logo';
 
@@ -29,7 +29,6 @@ export default function PayPage() {
   const preselected = searchParams.get('plan');
   const [paddleReady, setPaddleReady] = useState(false);
   const [error, setError] = useState(null);
-  const [completed, setCompleted] = useState(false);
   const autoOpened = useRef(false);
 
   const { data, isLoading, error: configError } = useQuery({
@@ -46,12 +45,7 @@ export default function PayPage() {
     loadPaddleJs()
       .then((Paddle) => {
         if (data.environment === 'sandbox') Paddle.Environment.set('sandbox');
-        Paddle.Initialize({
-          token: data.clientToken,
-          eventCallback: (event) => {
-            if (event.name === 'checkout.completed') setCompleted(true);
-          }
-        });
+        Paddle.Initialize({ token: data.clientToken });
         setPaddleReady(true);
       })
       .catch((err) => setError(err.message));
@@ -61,7 +55,11 @@ export default function PayPage() {
     setError(null);
     window.Paddle.Checkout.open({
       items: [{ priceId: plan.priceId, quantity: 1 }],
-      settings: { displayMode: 'overlay', theme: 'dark' }
+      settings: {
+        displayMode: 'overlay',
+        theme: 'dark',
+        ...(data?.successUrl ? { successUrl: data.successUrl } : {})
+      }
     });
   };
 
@@ -74,56 +72,53 @@ export default function PayPage() {
     }
   }, [paddleReady, preselected, data]);
 
+  // If the link named a real plan, show only that plan. Falls back to the
+  // full list below when the plan code is missing or doesn't match anything.
+  const selectedPlan = preselected ? data?.plans.find((p) => p.code === preselected) : null;
+  const visiblePlans = selectedPlan ? [selectedPlan] : (data?.plans ?? []);
+
   return (
     <div className="flex min-h-screen flex-col items-center bg-canvas px-4 py-12 font-sans text-ink">
       <Logo className="mb-8" />
 
       <div className="w-full max-w-2xl rounded-2xl border border-border bg-card p-8">
-        {completed ? (
-          <div className="text-center">
-            <h1 className="font-serif text-3xl italic">Thank you.</h1>
-            <p className="mt-3 text-sm text-muted">
-              Your payment went through. We are creating your license now; your login details and license key will arrive by email in a minute or two.
-            </p>
-            <Link to="/login" className="mt-6 inline-block text-sm text-accent-hover hover:underline">Go to login</Link>
+        <h1 className="text-center font-serif text-3xl italic">
+          {selectedPlan ? `Get ${selectedPlan.name}.` : 'Choose your plan.'}
+        </h1>
+        <p className="mt-2 text-center text-sm text-muted">
+          {selectedPlan ? 'Continue to secure checkout.' : 'Pick a plan to continue to secure checkout.'}
+        </p>
+
+        {(error || configError) && (
+          <div className="mt-6 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
+            {error || configError.message}
           </div>
-        ) : (
-          <>
-            <h1 className="text-center font-serif text-3xl italic">Choose your plan.</h1>
-            <p className="mt-2 text-center text-sm text-muted">Pick a plan to continue to secure checkout.</p>
-
-            {(error || configError) && (
-              <div className="mt-6 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
-                {error || configError.message}
-              </div>
-            )}
-
-            {isLoading && <p className="mt-6 text-center text-sm text-muted">Loading plans...</p>}
-
-            {data && data.plans.length === 0 && (
-              <p className="mt-6 text-center text-sm text-muted">No plans are available yet.</p>
-            )}
-
-            <div className="mt-6 space-y-3">
-              {data?.plans.map((plan) => (
-                <div key={plan.code} className="flex items-center justify-between rounded-xl border border-border px-5 py-4">
-                  <div>
-                    <p className="font-medium">{plan.name}</p>
-                    <p className="text-sm text-muted">{planLine(plan)}</p>
-                  </div>
-                  <button
-                    type="button"
-                    disabled={!paddleReady}
-                    onClick={() => openCheckout(plan)}
-                    className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Buy {plan.name}
-                  </button>
-                </div>
-              ))}
-            </div>
-          </>
         )}
+
+        {isLoading && <p className="mt-6 text-center text-sm text-muted">Loading plans...</p>}
+
+        {data && visiblePlans.length === 0 && (
+          <p className="mt-6 text-center text-sm text-muted">No plans are available yet.</p>
+        )}
+
+        <div className="mt-6 space-y-3">
+          {visiblePlans.map((plan) => (
+            <div key={plan.code} className="flex items-center justify-between rounded-xl border border-border px-5 py-4">
+              <div>
+                <p className="font-medium">{plan.name}</p>
+                <p className="text-sm text-muted">{planLine(plan)}</p>
+              </div>
+              <button
+                type="button"
+                disabled={!paddleReady}
+                onClick={() => openCheckout(plan)}
+                className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Buy {plan.name}
+              </button>
+            </div>
+          ))}
+        </div>
       </div>
 
       <p className="mt-8 text-sm text-muted">

@@ -6,9 +6,10 @@ import { AppError } from '../../lib/errors.js';
 import { writeAuditLog } from '../../lib/audit.js';
 import { sendEmail } from '../email/mailer.js';
 import { env } from '../../config/env.js';
+import { getSettingSection } from '../../lib/settings.js';
 
 const DEFAULTS = {
-  store: { name: 'Bricks SEO', supportEmail: env.EMAIL_FROM, timezone: 'UTC' },
+  store: { name: 'Bricks SEO', supportEmail: 'support@bricksseo.com', timezone: 'UTC' },
   maintenance: { enabled: false },
   licensing: { gracePeriodDays: 7, maxSiteActivationsOverride: null, domainValidation: true, allowLocalhost: true },
   smtp: { host: '', port: 587, username: '', password: '', fromName: 'Bricks SEO', fromAddress: env.EMAIL_FROM },
@@ -22,8 +23,7 @@ const DEFAULTS = {
 const SECTIONS = ['store', 'admin', 'maintenance', 'licensing', 'smtp', 'notifications'];
 
 async function getSection(key) {
-  const row = await prisma.setting.findUnique({ where: { key: `settings.${key}` } });
-  return row ? { ...DEFAULTS[key], ...row.value } : DEFAULTS[key];
+  return getSettingSection(key, DEFAULTS[key]);
 }
 
 const SaveSchema = z.object({

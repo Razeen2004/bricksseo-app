@@ -70,6 +70,7 @@ export async function buildApp(opts = {}) {
   const adminWebhooksRoutes = (await import('./modules/admin/webhooks.routes.js')).default;
   const adminLogsRoutes = (await import('./modules/admin/logs.routes.js')).default;
   const adminSettingsRoutes = (await import('./modules/admin/settings.routes.js')).default;
+  const adminEmailTemplatesRoutes = (await import('./modules/admin/email-templates.routes.js')).default;
   await app.register(adminOverviewRoutes);
   await app.register(adminCustomersRoutes);
   await app.register(adminLicensesRoutes);
@@ -77,6 +78,7 @@ export async function buildApp(opts = {}) {
   await app.register(adminWebhooksRoutes);
   await app.register(adminLogsRoutes);
   await app.register(adminSettingsRoutes);
+  await app.register(adminEmailTemplatesRoutes);
 
   const allowedOrigins = new Set([env.APP_URL, env.MARKETING_URL]);
   await app.register(cors, {

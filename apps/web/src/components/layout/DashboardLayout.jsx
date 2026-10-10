@@ -3,7 +3,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   LayoutDashboard, KeyRound, Globe, CreditCard, LifeBuoy, ChevronDown,
-  Activity, Users, Zap, FileText, Settings as SettingsIcon,
+  Activity, Users, Zap, FileText, Settings as SettingsIcon, Mail,
 } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 import Logo from '../ui/Logo';
@@ -24,6 +24,7 @@ const ADMIN_NAV_ITEMS = [
   { to: '/admin/sites', label: 'All Sites', icon: Globe },
   { to: '/admin/webhooks', label: 'Webhooks', icon: Zap },
   { to: '/admin/logs', label: 'Logs', icon: FileText },
+  { to: '/admin/emails', label: 'Emails', icon: Mail },
   { to: '/admin/settings', label: 'Settings', icon: SettingsIcon },
 ];
 

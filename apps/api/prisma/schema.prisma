@@ -44,6 +44,7 @@ model User {
   emailLogs               EmailLog[]
   auditLogs               AuditLog[]
   settings                Setting[]
+  emailTemplates          EmailTemplate[]
 
   @@map("users")
 }
@@ -351,6 +352,18 @@ model Setting {
   updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz()
 
   @@map("settings")
+}
+
+model EmailTemplate {
+  key        String   @id
+  subject    String
+  html       String
+  text       String
+  updatedBy  String?  @map("updated_by") @db.Uuid
+  user       User?    @relation(fields: [updatedBy], references: [id], onDelete: SetNull)
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz()
+
+  @@map("email_templates")
 }
 
 model DailySnapshot {

@@ -16,6 +16,7 @@ import AdminAllSitesPage from '../features/admin/AllSitesPage';
 import AdminWebhooksPage from '../features/admin/WebhooksPage';
 import AdminLogsPage from '../features/admin/LogsPage';
 import AdminSettingsPage from '../features/admin/SettingsPage';
+import AdminEmailTemplatesPage from '../features/admin/EmailTemplatesPage';
 import PayPage from '../features/checkout/PayPage';
 
 const router = createBrowserRouter([
@@ -36,6 +37,7 @@ const router = createBrowserRouter([
       { path: 'admin/webhooks', element: <AdminWebhooksPage /> },
       { path: 'admin/logs', element: <AdminLogsPage /> },
       { path: 'admin/settings', element: <AdminSettingsPage /> },
+      { path: 'admin/emails', element: <AdminEmailTemplatesPage /> },
     ],
   },
   { path: '/pay', element: <PayPage /> },

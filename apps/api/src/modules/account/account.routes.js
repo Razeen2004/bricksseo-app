@@ -8,6 +8,7 @@ import { decryptKey } from '../licenses/keygen.js';
 import { paddleClient } from '../paddle/client.js';
 import { sendEmail } from '../email/mailer.js';
 import { env } from '../../config/env.js';
+import { getSettingSection } from '../../lib/settings.js';
 
 const STALE_ACTIVATION_DAYS = 45;
 
@@ -264,8 +265,10 @@ export default async function accountRoutes(fastify, opts) {
 
     const { subject, message } = SupportSchema.parse(request.body);
 
+    const store = await getSettingSection('store', { supportEmail: 'support@bricksseo.com' });
+
     await sendEmail({
-      to: env.ADMIN_ALERT_EMAIL,
+      to: store.supportEmail || 'support@bricksseo.com',
       template: 'support_request',
       userId: request.user.id,
       replyTo: request.user.email,

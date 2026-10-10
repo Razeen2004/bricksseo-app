@@ -12,6 +12,7 @@ export default async function publicRoutes(fastify) {
     return {
       environment: env.PADDLE_ENV,
       clientToken: env.PADDLE_CLIENT_TOKEN || null,
+      successUrl: `${env.MARKETING_URL}/thank-you`,
       plans: prices.map((p) => ({
         code: p.plan.code,
         name: p.plan.name,
