@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 import StatCard from '../../components/ui/StatCard';
 import AddSiteInfoDialog from '../../components/ui/AddSiteInfoDialog';
@@ -39,6 +39,11 @@ export default function SitesPage() {
       queryClient.invalidateQueries({ queryKey: ['sites'] });
       queryClient.invalidateQueries({ queryKey: ['me'] });
     },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (activationId) => apiFetch(`/account/sites/${activationId}`, { method: 'DELETE' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sites'] }),
   });
 
   const sites = data?.sites ?? [];
@@ -114,12 +119,22 @@ export default function SitesPage() {
                   <td className="px-6 py-3 text-muted">{s.pluginVersion || '—'}</td>
                   <td className="px-6 py-3 text-muted">{s.status === 'removed' ? formatDate(s.deactivatedAt) : timeAgo(s.lastSeenAt)}</td>
                   <td className="px-6 py-3 text-right">
-                    {s.status !== 'removed' && (
+                    {s.status !== 'removed' ? (
                       <button
                         onClick={() => deactivateMutation.mutate(s.id)}
                         className="text-sm text-muted hover:text-danger"
                       >
                         Deactivate
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => { if (confirm('Permanently delete this site?')) deleteMutation.mutate(s.id); }}
+                        disabled={deleteMutation.isPending}
+                        aria-label="Delete site"
+                        title="Delete"
+                        className="text-muted hover:text-danger disabled:opacity-50"
+                      >
+                        <Trash2 size={16} />
                       </button>
                     )}
                   </td>

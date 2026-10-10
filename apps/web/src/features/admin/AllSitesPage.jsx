@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Search, AlertTriangle, Download } from 'lucide-react';
+import { Search, AlertTriangle, Download, Trash2 } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 import { timeAgo } from '../../lib/format';
 import StatCard from '../../components/ui/StatCard';
@@ -22,6 +22,11 @@ export default function AllSitesPage() {
 
   const deactivateMutation = useMutation({
     mutationFn: (id) => apiFetch(`/admin/sites/${id}/deactivate`, { method: 'POST' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-sites'] }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id) => apiFetch(`/admin/sites/${id}`, { method: 'DELETE' }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-sites'] }),
   });
 
@@ -105,9 +110,19 @@ export default function AllSitesPage() {
                     {timeAgo(s.lastSeenAt)}
                   </td>
                   <td className="px-6 py-3 text-right">
-                    {s.status !== 'removed' && (
+                    {s.status !== 'removed' ? (
                       <button onClick={() => deactivateMutation.mutate(s.id)} className="text-sm text-muted hover:text-danger">
                         Deactivate
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => { if (confirm('Permanently delete this site?')) deleteMutation.mutate(s.id); }}
+                        disabled={deleteMutation.isPending}
+                        aria-label="Delete site"
+                        title="Delete"
+                        className="text-muted hover:text-danger disabled:opacity-50"
+                      >
+                        <Trash2 size={16} />
                       </button>
                     )}
                   </td>

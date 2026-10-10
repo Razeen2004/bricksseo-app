@@ -38,25 +38,25 @@ export default function SupportPage() {
           <BookOpen size={18} className="text-accent-hover" />
           <h3 className="mt-3 font-semibold">Docs</h3>
           <p className="mt-1 text-sm text-muted">Setup guides, hooks, filters, troubleshooting.</p>
-          <a href="#" className="mt-2 inline-block text-sm text-accent-hover hover:underline">Open docs →</a>
+          <a href="https://bricksseo.com/docs" target="_blank" rel="noreferrer" className="mt-2 inline-block text-sm text-accent-hover hover:underline">Open docs →</a>
         </div>
         <div className="rounded-xl border border-border bg-card p-5">
           <Sparkles size={18} className="text-accent-hover" />
           <h3 className="mt-3 font-semibold">Changelog</h3>
           <p className="mt-1 text-sm text-muted">Every release with dates and descriptions.</p>
-          <a href="#" className="mt-2 inline-block text-sm text-accent-hover hover:underline">View changelog →</a>
+          <a href="https://bricksseo.com/changelog" target="_blank" rel="noreferrer" className="mt-2 inline-block text-sm text-accent-hover hover:underline">View changelog →</a>
         </div>
         <div className="rounded-xl border border-border bg-card p-5">
           <Rocket size={18} className="text-accent-hover" />
           <h3 className="mt-3 font-semibold">Setup guide</h3>
           <p className="mt-1 text-sm text-muted">Install, activate, and configure in 5 minutes.</p>
-          <a href="#" className="mt-2 inline-block text-sm text-accent-hover hover:underline">Start setup →</a>
+          <a href="https://bricksseo.com/docs/licensing/" target="_blank" rel="noreferrer" className="mt-2 inline-block text-sm text-accent-hover hover:underline">Start setup →</a>
         </div>
         <div className="rounded-xl border border-border bg-card p-5">
           <ShieldCheck size={18} className="text-accent-hover" />
           <h3 className="mt-3 font-semibold">License FAQ</h3>
           <p className="mt-1 text-sm text-muted">Common questions about activations and renewals.</p>
-          <a href="#" className="mt-2 inline-block text-sm text-accent-hover hover:underline">Read FAQ →</a>
+          <a href="https://bricksseo.com/#faq" target="_blank" rel="noreferrer" className="mt-2 inline-block text-sm text-accent-hover hover:underline">Read FAQ →</a>
         </div>
       </div>
 

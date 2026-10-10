@@ -125,7 +125,7 @@ export default function DashboardLayout() {
 
         <div className="flex min-h-screen flex-1 flex-col">
           <header className="flex items-center justify-end gap-6 border-b border-border px-8 py-4">
-            {!isAdmin && <a href="#" className="text-sm text-muted hover:text-ink">Docs</a>}
+            {!isAdmin && <a href="https://bricksseo.com/docs" target="_blank" rel="noreferrer" className="text-sm text-muted hover:text-ink">Docs</a>}
             {isAdmin && <NotificationsBell />}
             <div className="relative">
               <button

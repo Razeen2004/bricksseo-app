@@ -158,6 +158,26 @@ export default async function accountRoutes(fastify, opts) {
     return reply.status(200).send({ ok: true });
   });
 
+  fastify.delete('/v1/account/sites/:activationId', { preHandler: [requireUser] }, async (request, reply) => {
+    requirePasswordChanged(request);
+
+    const activation = await prisma.activation.findFirst({
+      where: {
+        id: request.params.activationId,
+        license: { userId: request.user.id }
+      }
+    });
+
+    if (!activation) throw new AppError('not_found', 404, 'Site not found');
+    if (!activation.deactivatedAt) {
+      throw new AppError('validation_failed', 400, 'Deactivate this site before deleting it.');
+    }
+
+    await prisma.activation.delete({ where: { id: activation.id } });
+
+    return reply.status(200).send({ ok: true });
+  });
+
   fastify.get('/v1/account/billing', { preHandler: [requireUser] }, async (request, reply) => {
     requirePasswordChanged(request);
 
@@ -267,7 +287,7 @@ export default async function accountRoutes(fastify, opts) {
 
     try {
       const invoice = await paddleClient.getTransactionInvoice(transaction.paddleTransactionId);
-      return reply.redirect(invoice.url);
+      return reply.status(200).send({ ok: true, url: invoice.url });
     } catch (err) {
       request.log.error(err);
       throw new AppError('invoice_unavailable', 502, "Couldn't fetch this invoice from Paddle right now. Please try again shortly.");

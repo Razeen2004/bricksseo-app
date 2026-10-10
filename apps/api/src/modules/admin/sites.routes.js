@@ -119,4 +119,25 @@ export default async function adminSitesRoutes(fastify, opts) {
 
     return reply.status(200).send({ ok: true });
   });
+
+  fastify.delete('/v1/admin/sites/:activationId', { preHandler: [requireUser, requireAdmin] }, async (request, reply) => {
+    const activation = await prisma.activation.findUnique({ where: { id: request.params.activationId } });
+    if (!activation) throw new AppError('not_found', 404, 'Site not found');
+    if (!activation.deactivatedAt) {
+      throw new AppError('validation_failed', 400, 'Deactivate this site before deleting it.');
+    }
+
+    await prisma.activation.delete({ where: { id: activation.id } });
+
+    await writeAuditLog({
+      actorUserId: request.user.id,
+      action: 'site.delete',
+      targetType: 'activation',
+      targetId: activation.id,
+      meta: { siteUrl: activation.siteUrl },
+      ip: request.ip
+    });
+
+    return reply.status(200).send({ ok: true });
+  });
 }

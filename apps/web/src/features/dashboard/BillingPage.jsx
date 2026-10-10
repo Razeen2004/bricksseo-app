@@ -28,20 +28,8 @@ export default function BillingPage() {
     setInvoiceError(null);
     setDownloadingId(id);
     try {
-      const res = await fetch(`/v1/account/invoices/${id}/pdf`, {
-        credentials: 'include',
-        headers: { 'X-Requested-With': 'XMLHttpRequest' },
-      });
-      if (!res.ok) {
-        let message = "Couldn't download this invoice.";
-        try {
-          const body = await res.json();
-          message = body.error?.message || message;
-        } catch {}
-        throw new Error(message);
-      }
-      const blob = await res.blob();
-      window.open(URL.createObjectURL(blob), '_blank');
+      const data = await apiFetch(`/account/invoices/${id}/pdf`);
+      window.open(data.url, '_blank');
     } catch (err) {
       setInvoiceError(err.message);
     } finally {
