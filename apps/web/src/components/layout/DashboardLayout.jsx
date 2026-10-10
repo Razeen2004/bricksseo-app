@@ -3,7 +3,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   LayoutDashboard, KeyRound, Globe, CreditCard, LifeBuoy, ChevronDown,
-  Activity, Users, Zap, FileText, Settings as SettingsIcon, Mail, PackageOpen
+  Activity, Users, Zap, FileText, Settings as SettingsIcon, Mail, PackageOpen, Database
 } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 import Logo from '../ui/Logo';
@@ -20,6 +20,7 @@ const CUSTOMER_NAV_ITEMS = [
 const ADMIN_NAV_ITEMS = [
   { to: '/admin', label: 'Overview', icon: Activity, end: true },
   { to: '/admin/customers', label: 'Customers', icon: Users },
+  { to: '/admin/data', label: 'Import / Export', icon: Database },
   { to: '/admin/licenses', label: 'All Licenses', icon: KeyRound },
   { to: '/admin/sites', label: 'All Sites', icon: Globe },
   { to: '/admin/releases', label: 'Releases', icon: PackageOpen },

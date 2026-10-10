@@ -18,6 +18,7 @@ import AdminLogsPage from '../features/admin/LogsPage';
 import AdminSettingsPage from '../features/admin/SettingsPage';
 import AdminEmailTemplatesPage from '../features/admin/EmailTemplatesPage';
 import AdminReleasesPage from '../features/admin/ReleasesPage';
+import AdminDataPage from '../features/admin/DataPage';
 import PayPage from '../features/checkout/PayPage';
 
 const router = createBrowserRouter([
@@ -33,6 +34,7 @@ const router = createBrowserRouter([
       { path: 'account', element: <AccountPage /> },
       { path: 'admin', element: <AdminOverviewPage /> },
       { path: 'admin/customers', element: <AdminCustomersPage /> },
+      { path: 'admin/data', element: <AdminDataPage /> },
       { path: 'admin/licenses', element: <AdminAllLicensesPage /> },
       { path: 'admin/sites', element: <AdminAllSitesPage /> },
       { path: 'admin/releases', element: <AdminReleasesPage /> },
