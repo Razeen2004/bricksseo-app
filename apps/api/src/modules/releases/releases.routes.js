@@ -26,39 +26,38 @@ export default async function releaseRoutes(fastify, opts) {
     
     const parts = request.parts();
     let version, changelogMd;
-    let fileStream;
+    let sizeBytes = 0;
+    let sha256 = '';
+    let fileName = '';
 
     for await (const part of parts) {
       if (part.type === 'file') {
-        fileStream = part;
+        if (!version) throw new AppError('validation_failed', 400, 'Version must be sent before the file.');
+        
+        fileName = `bricks-seo-${version}.zip`;
+        const filePath = path.join(STORAGE_DIR, fileName);
+        
+        const hash = crypto.createHash('sha256');
+        const writeStream = createWriteStream(filePath);
+        
+        for await (const chunk of part.file) {
+          hash.update(chunk);
+          writeStream.write(chunk);
+          sizeBytes += chunk.length;
+        }
+        writeStream.end();
+        sha256 = hash.digest('hex');
       } else {
         if (part.fieldname === 'version') version = part.value;
         if (part.fieldname === 'changelogMd') changelogMd = part.value;
       }
     }
 
-    if (!fileStream || !version) {
+    if (!fileName || !version) {
       throw new AppError('validation_failed', 400, 'Missing file or version');
     }
 
-    const versionSort = version.padStart(10, '0'); // Simplistic sorting for MVP
-    const fileName = `bricks-seo-${version}.zip`;
-    const filePath = path.join(STORAGE_DIR, fileName);
-
-    // Stream the file to disk and calculate SHA256 simultaneously
-    const hash = crypto.createHash('sha256');
-    const writeStream = createWriteStream(filePath);
-    
-    let sizeBytes = 0;
-    
-    for await (const chunk of fileStream.file) {
-      hash.update(chunk);
-      writeStream.write(chunk);
-      sizeBytes += chunk.length;
-    }
-    writeStream.end();
-
-    const sha256 = hash.digest('hex');
+    const versionSort = version.padStart(10, '0');
 
     // Create DB Record
     const release = await prisma.release.create({
