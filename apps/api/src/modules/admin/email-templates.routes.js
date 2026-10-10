@@ -55,7 +55,7 @@ export default async function adminEmailTemplatesRoutes(fastify, opts) {
     const key = request.params.key;
 
     const tpl = await getEffectiveTemplate(key);
-    const sampleVars = buildTemplateVars(key, TEMPLATE_SAMPLE_DATA[key]);
+    const sampleVars = await buildTemplateVars(key, TEMPLATE_SAMPLE_DATA[key]);
     const preview = renderAll(tpl, sampleVars);
 
     return reply.status(200).send({
@@ -68,7 +68,7 @@ export default async function adminEmailTemplatesRoutes(fastify, opts) {
       text: tpl.text,
       isCustom: tpl.isCustom,
       updatedAt: tpl.updatedAt,
-      vars: varsLegend(key),
+      vars: await varsLegend(key),
       preview
     });
   });
@@ -78,7 +78,7 @@ export default async function adminEmailTemplatesRoutes(fastify, opts) {
     const key = request.params.key;
     const draft = SaveSchema.parse(request.body);
 
-    const sampleVars = buildTemplateVars(key, TEMPLATE_SAMPLE_DATA[key]);
+    const sampleVars = await buildTemplateVars(key, TEMPLATE_SAMPLE_DATA[key]);
     const preview = renderAll(draft, sampleVars);
 
     return reply.status(200).send({ ok: true, preview });
@@ -89,7 +89,7 @@ export default async function adminEmailTemplatesRoutes(fastify, opts) {
     const key = request.params.key;
     const values = SaveSchema.parse(request.body);
 
-    const unknown = findUnknownPlaceholders(key, values);
+    const unknown = await findUnknownPlaceholders(key, values);
     if (unknown.length > 0) {
       throw new AppError(
         'unknown_placeholder',
@@ -113,7 +113,7 @@ export default async function adminEmailTemplatesRoutes(fastify, opts) {
     });
 
     const tpl = await getEffectiveTemplate(key);
-    const sampleVars = buildTemplateVars(key, TEMPLATE_SAMPLE_DATA[key]);
+    const sampleVars = await buildTemplateVars(key, TEMPLATE_SAMPLE_DATA[key]);
     const preview = renderAll(tpl, sampleVars);
 
     return reply.status(200).send({ ok: true, updatedAt: tpl.updatedAt, preview });

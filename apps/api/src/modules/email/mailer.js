@@ -6,7 +6,7 @@ import { getEffectiveTemplate, buildTemplateVars, renderAll } from './templates.
 export async function sendEmail({ to, template, data, idempotencyKey, userId = null, replyTo = null }) {
   // 1. Render template (admin-edited copy if one exists, else the built-in default)
   const tpl = await getEffectiveTemplate(template);
-  const vars = buildTemplateVars(template, data);
+  const vars = await buildTemplateVars(template, data);
   const { subject, text, html } = renderAll(tpl, vars);
 
   // 2. Insert into email_log
