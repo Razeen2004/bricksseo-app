@@ -297,10 +297,6 @@ export default async function accountRoutes(fastify, opts) {
     }
   });
 
-  fastify.post('/v1/account/downloads/latest', { preHandler: [requireUser] }, async (request, reply) => {
-    requirePasswordChanged(request);
-    throw new AppError('no_release', 404, 'No published release yet. Check back soon.');
-  });
 
   const ChangePasswordSchema = z.object({
     currentPassword: z.string().min(1),

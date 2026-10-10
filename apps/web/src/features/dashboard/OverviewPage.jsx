@@ -43,6 +43,11 @@ export default function OverviewPage() {
 
   const downloadMutation = useMutation({
     mutationFn: () => apiFetch('/account/downloads/latest', { method: 'POST' }),
+    onSuccess: (data) => {
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    }
   });
 
   function handleCopy() {

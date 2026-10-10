@@ -80,6 +80,11 @@ export async function buildApp(opts = {}) {
   await app.register(adminSettingsRoutes);
   await app.register(adminEmailTemplatesRoutes);
 
+  // Releases Routes
+  await app.register((await import('@fastify/multipart')).default);
+  const releasesRoutes = (await import('./modules/releases/releases.routes.js')).default;
+  await app.register(releasesRoutes);
+
   const allowedOrigins = new Set([env.APP_URL, env.MARKETING_URL]);
   await app.register(cors, {
     origin: (origin, cb) => {
