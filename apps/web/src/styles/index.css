@@ -43,6 +43,20 @@ main table td {
   white-space: nowrap;
 }
 
+main table.invoice-history-table {
+  display: table;
+  width: 100%;
+  min-width: 36rem;
+  max-width: none;
+  table-layout: fixed;
+}
+
+@media (min-width: 640px) {
+  main table.invoice-history-table {
+    min-width: 100%;
+  }
+}
+
 main tbody tr {
   transition: background-color 140ms ease;
 }

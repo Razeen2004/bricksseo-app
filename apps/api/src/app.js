@@ -73,6 +73,7 @@ export async function buildApp(opts = {}) {
   const adminLicensesRoutes = (await import('./modules/admin/licenses.routes.js')).default;
   const adminSitesRoutes = (await import('./modules/admin/sites.routes.js')).default;
   const adminWebhooksRoutes = (await import('./modules/admin/webhooks.routes.js')).default;
+  const adminNotificationsRoutes = (await import('./modules/admin/notifications.routes.js')).default;
   const adminLogsRoutes = (await import('./modules/admin/logs.routes.js')).default;
   const adminSettingsRoutes = (await import('./modules/admin/settings.routes.js')).default;
   const adminEmailTemplatesRoutes = (await import('./modules/admin/email-templates.routes.js')).default;
@@ -82,6 +83,7 @@ export async function buildApp(opts = {}) {
   await app.register(adminLicensesRoutes);
   await app.register(adminSitesRoutes);
   await app.register(adminWebhooksRoutes);
+  await app.register(adminNotificationsRoutes);
   await app.register(adminLogsRoutes);
   await app.register(adminSettingsRoutes);
   await app.register(adminEmailTemplatesRoutes);

@@ -158,38 +158,46 @@ export default function BillingPage() {
         {invoices.length === 0 ? (
           <EmptyState compact title="No invoices yet" description="Completed purchases and renewals will be listed here." />
         ) : (
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-y border-border text-xs uppercase tracking-wide text-muted">
-                <th className="px-6 py-2 font-medium">Date</th>
-                <th className="px-6 py-2 font-medium">Amount</th>
-                <th className="px-6 py-2 font-medium">Status</th>
-                <th className="px-6 py-2"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {invoices.map(inv => (
-                <tr key={inv.id} className="border-b border-border last:border-0">
-                  <td className="px-6 py-3 font-mono text-sm">{formatDate(inv.date)}</td>
-                  <td className="px-6 py-3 font-mono text-sm">{formatMoney(inv.amountMinor, inv.currency)}</td>
-                  <td className="px-6 py-3">
-                    <span className={`rounded-full px-2.5 py-1 text-xs font-medium capitalize ${STATUS_STYLE[inv.status] || 'bg-white/5 text-muted'}`}>
-                      {inv.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-3 text-right">
-                    <button
-                      onClick={() => downloadInvoice(inv.id)}
-                      disabled={downloadingId === inv.id}
-                      className="inline-flex items-center gap-1.5 text-sm text-accent-hover hover:underline disabled:opacity-50"
-                    >
-                      <Download size={14} /> {downloadingId === inv.id ? 'Downloading…' : 'Download PDF'}
-                    </button>
-                  </td>
+          <div className="overflow-x-auto" role="region" aria-label="Invoice history" tabIndex={0}>
+            <table className="invoice-history-table text-left text-sm">
+              <colgroup>
+                <col className="w-[22%]" />
+                <col className="w-[20%]" />
+                <col className="w-[18%]" />
+                <col className="w-[40%]" />
+              </colgroup>
+              <thead>
+                <tr className="border-y border-border text-xs uppercase tracking-wide text-muted">
+                  <th className="px-4 py-3 font-medium sm:px-6">Date</th>
+                  <th className="px-4 py-3 font-medium sm:px-6">Amount</th>
+                  <th className="px-4 py-3 font-medium sm:px-6">Status</th>
+                  <th className="px-4 py-3 sm:px-6"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {invoices.map(inv => (
+                  <tr key={inv.id} className="border-b border-border last:border-0">
+                    <td className="px-4 py-3 font-mono text-sm sm:px-6">{formatDate(inv.date)}</td>
+                    <td className="px-4 py-3 font-mono text-sm sm:px-6">{formatMoney(inv.amountMinor, inv.currency)}</td>
+                    <td className="px-4 py-3 sm:px-6">
+                      <span className={`rounded-full px-2.5 py-1 text-xs font-medium capitalize ${STATUS_STYLE[inv.status] || 'bg-white/5 text-muted'}`}>
+                        {inv.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right sm:px-6">
+                      <button
+                        onClick={() => downloadInvoice(inv.id)}
+                        disabled={downloadingId === inv.id}
+                        className="inline-flex items-center justify-end gap-1.5 whitespace-nowrap text-sm text-accent-hover hover:underline disabled:opacity-50"
+                      >
+                        <Download size={14} /> {downloadingId === inv.id ? 'Downloading…' : 'Download PDF'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 

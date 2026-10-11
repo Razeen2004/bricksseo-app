@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Bell, AlertTriangle } from 'lucide-react';
+import { Bell, AlertTriangle, ShoppingCart } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
-import { timeAgo } from '../../lib/format';
+import { formatMoney, timeAgo } from '../../lib/format';
 
 export default function NotificationsBell() {
   const [open, setOpen] = useState(false);
@@ -11,11 +11,12 @@ export default function NotificationsBell() {
 
   const { data } = useQuery({
     queryKey: ['admin-notifications'],
-    queryFn: () => apiFetch('/admin/webhooks?status=failed'),
+    queryFn: () => apiFetch('/admin/notifications'),
     refetchInterval: 30000,
   });
 
-  const failed = data?.webhooks ?? [];
+  const purchases = data?.purchases ?? [];
+  const failed = data?.failedWebhooks ?? [];
   const count = data?.total ?? 0;
 
   return (
@@ -37,11 +38,24 @@ export default function NotificationsBell() {
           <div className="border-b border-border px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted">
             Notifications
           </div>
-          {failed.length === 0 ? (
-            <p className="px-3 py-4 text-sm text-muted">No failed webhooks. You're all caught up.</p>
+          {purchases.length === 0 && failed.length === 0 ? (
+            <p className="px-3 py-4 text-sm text-muted">No purchases in the last {data?.purchaseWindowDays ?? 7} days and no failed webhooks.</p>
           ) : (
             <div className="max-h-80 overflow-y-auto">
-              {failed.slice(0, 5).map(w => (
+              {purchases.map(purchase => (
+                <button
+                  key={`purchase-${purchase.id}`}
+                  onClick={() => { setOpen(false); navigate('/admin/customers'); }}
+                  className="flex w-full items-start gap-2 px-3 py-2 text-left hover:bg-white/5"
+                >
+                  <ShoppingCart size={14} className="mt-0.5 shrink-0 text-accent-hover" />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm">Purchase completed — {purchase.email}</p>
+                    <p className="text-xs text-muted">{formatMoney(purchase.totalMinor, purchase.currency)} · {timeAgo(purchase.createdAt)}</p>
+                  </div>
+                </button>
+              ))}
+              {failed.map(w => (
                 <button
                   key={w.id}
                   onClick={() => { setOpen(false); navigate('/admin/webhooks'); }}
@@ -49,9 +63,7 @@ export default function NotificationsBell() {
                 >
                   <AlertTriangle size={14} className="mt-0.5 shrink-0 text-danger" />
                   <div>
-                    <p className="text-sm">
-                      <span className="font-mono">{w.eventType}</span> failed{w.customerEmail ? ` — ${w.customerEmail}` : ''}
-                    </p>
+                    <p className="text-sm"><span className="font-mono">{w.eventType}</span> failed</p>
                     <p className="text-xs text-muted">{timeAgo(w.receivedAt)}</p>
                   </div>
                 </button>
@@ -62,7 +74,7 @@ export default function NotificationsBell() {
             onClick={() => { setOpen(false); navigate('/admin/webhooks'); }}
             className="block w-full border-t border-border px-3 py-2 text-left text-sm text-accent-hover hover:bg-white/5"
           >
-            View all webhooks →
+            View webhooks →
           </button>
         </div>
       )}
