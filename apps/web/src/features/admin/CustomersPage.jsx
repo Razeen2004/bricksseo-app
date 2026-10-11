@@ -3,6 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Search, Download, MoreHorizontal, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { apiFetch } from '../../lib/api';
+import AdminTableSkeleton from '../../components/ui/AdminTableSkeleton';
+import AdminStatsSkeleton from '../../components/ui/AdminStatsSkeleton';
 import { formatMoney, timeAgo } from '../../lib/format';
 import StatCard from '../../components/ui/StatCard';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
@@ -102,12 +104,12 @@ export default function CustomersPage() {
         <p className="mt-1 text-muted">Every customer who has purchased a Bricks SEO license.</p>
       </header>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+      {isLoading ? <AdminStatsSkeleton count={4} /> : <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
         <StatCard label="Total customers" value={stats.total ?? 0} />
         <StatCard label="Active" value={stats.active ?? 0} valueClassName="text-success" sub={stats.total ? `${Math.round((stats.active / stats.total) * 100)}% of total` : ''} />
         <StatCard label="Churned" value={stats.churned ?? 0} sub="No active license" />
         <StatCard label="Avg LTV" value={formatMoney(stats.avgLtvMinor ?? 0)} sub="Across all customers" />
-      </div>
+      </div>}
 
       <div className="rounded-xl border border-border bg-card">
         <div className="flex flex-wrap items-center gap-3 p-6 pb-4">
@@ -160,7 +162,7 @@ export default function CustomersPage() {
         </div>
 
         {isLoading ? (
-          <p className="px-6 pb-6 text-sm text-muted">Loading…</p>
+          <AdminTableSkeleton columns={7} />
         ) : (
           <table className="w-full text-left text-sm">
             <thead>

@@ -30,7 +30,7 @@ export function hashKey(key) {
   return hmac.digest();
 }
 
-export function encryptKey(key) {
+export function encryptValue(value) {
   // Uses APP_ENCRYPTION_KEYS (v1:base64)
   const currentKeyStr = env.APP_ENCRYPTION_KEYS.split(',')[0];
   const [version, base64Key] = currentKeyStr.split(':');
@@ -39,14 +39,14 @@ export function encryptKey(key) {
   const iv = crypto.randomBytes(12);
   const cipher = crypto.createCipheriv('aes-256-gcm', encryptionKey, iv);
   
-  let encrypted = cipher.update(key, 'utf8', 'base64');
+  let encrypted = cipher.update(value, 'utf8', 'base64');
   encrypted += cipher.final('base64');
   const authTag = cipher.getAuthTag().toString('base64');
   
   return `${version}:${iv.toString('base64')}:${authTag}:${encrypted}`;
 }
 
-export function decryptKey(ciphertext) {
+export function decryptValue(ciphertext) {
   const parts = ciphertext.split(':');
   if (parts.length !== 4) throw new Error('Invalid ciphertext format');
   
@@ -76,3 +76,6 @@ export function decryptKey(ciphertext) {
   decrypted += decipher.final('utf8');
   return decrypted;
 }
+
+export const encryptKey = encryptValue;
+export const decryptKey = decryptValue;

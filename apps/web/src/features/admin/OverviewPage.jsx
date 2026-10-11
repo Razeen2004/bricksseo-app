@@ -5,6 +5,8 @@ import { CreditCard, Globe, UserPlus, XCircle, RotateCcw, ArrowUpRight } from 'l
 import { apiFetch } from '../../lib/api';
 import { formatMoney, timeAgo } from '../../lib/format';
 import StatCard from '../../components/ui/StatCard';
+import Skeleton from '../../components/ui/Skeleton';
+import AdminTableSkeleton from '../../components/ui/AdminTableSkeleton';
 
 const RANGES = ['7d', '30d', '90d', '12w'];
 
@@ -31,12 +33,12 @@ function activityLine(e) {
 export default function OverviewPage() {
   const [range, setRange] = useState('12w');
 
-  const { data } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['admin-overview'],
     queryFn: () => apiFetch('/admin/overview'),
   });
 
-  const { data: chartData } = useQuery({
+  const { data: chartData, isLoading: chartLoading } = useQuery({
     queryKey: ['admin-overview-chart', range],
     queryFn: () => apiFetch(`/admin/overview/chart?range=${range}`),
   });
@@ -54,6 +56,7 @@ export default function OverviewPage() {
         <p className="mt-1 text-muted">Everything happening in Bricks SEO right now.</p>
       </header>
 
+      {isLoading ? <div role="status" aria-label="Loading admin overview" className="space-y-6"><span className="sr-only">Loading…</span><div className="grid grid-cols-1 gap-4 sm:grid-cols-4">{Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-28 w-full" />)}</div><Skeleton className="h-80 w-full" /><div className="grid grid-cols-1 gap-4 lg:grid-cols-2"><Skeleton className="h-64 w-full" /><Skeleton className="h-64 w-full" /></div><AdminTableSkeleton columns={6} /></div> : <>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
         <StatCard label="Revenue (all-time)" value={formatMoney(data?.revenueAllTimeMinor ?? 0)} sub={`+${data?.newLicensesThisWeek ?? 0} licenses this week`} />
         <StatCard label="Active licenses" value={data?.activeLicenses ?? 0} sub={`${data?.newLicensesThisWeek ?? 0} new this week`} />
@@ -78,7 +81,7 @@ export default function OverviewPage() {
             ))}
           </div>
         </div>
-        <div className="mt-4 h-64">
+        {chartLoading ? <Skeleton className="mt-4 h-64 w-full" /> : <div className="mt-4 h-64">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={points}>
               <defs>
@@ -94,7 +97,7 @@ export default function OverviewPage() {
               <Area type="monotone" dataKey="count" stroke="#7b79f5" strokeWidth={2} fill="url(#licenseFill)" />
             </AreaChart>
           </ResponsiveContainer>
-        </div>
+        </div>}
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -165,6 +168,7 @@ export default function OverviewPage() {
           </tbody>
         </table>
       </div>
+      </>}
     </div>
   );
 }

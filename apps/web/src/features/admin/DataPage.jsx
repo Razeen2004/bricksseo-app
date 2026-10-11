@@ -87,7 +87,7 @@ export default function AdminDataPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-8">
+    <div className="mx-auto space-y-8">
       <header>
         <p className="text-sm text-muted">Admin</p>
         <h1 className="mt-1 font-serif text-4xl italic">Import / Export.</h1>

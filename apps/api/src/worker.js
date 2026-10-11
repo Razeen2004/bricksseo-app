@@ -4,6 +4,7 @@ import { processSubscriptionEvent } from './modules/paddle/subscription-events.j
 import { processAdjustmentEvent } from './modules/paddle/adjustment-events.js';
 import { sendEmail } from './modules/email/mailer.js';
 import { prisma } from './db/prisma.js';
+import { processLicenseExpiryScan } from './jobs/license-expiry.js';
 
 const SUBSCRIPTION_EVENT_TYPES = new Set([
   'subscription.created',
@@ -99,6 +100,14 @@ async function startWorker() {
   await queue.work('email.send', async (jobs) => {
     for (const job of jobs) {
       await sendEmail(job.data);
+    }
+  });
+
+  await queue.schedule('licenses.expiry.scan', '0 9 * * *', {}, { tz: 'UTC' });
+  await queue.work('licenses.expiry.scan', async (jobs) => {
+    for (const job of jobs) {
+      const result = await processLicenseExpiryScan();
+      console.log(`License expiry scan completed: ${result.queued} reminder email(s) queued from ${result.scanned} candidate license(s).`);
     }
   });
 

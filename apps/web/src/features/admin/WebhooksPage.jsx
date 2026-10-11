@@ -2,11 +2,14 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Search, RotateCcw, Copy } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
+import AdminTableSkeleton from '../../components/ui/AdminTableSkeleton';
 import { formatDateTime, timeAgo } from '../../lib/format';
 import StatCard from '../../components/ui/StatCard';
 import Badge from '../../components/ui/Badge';
 import Drawer from '../../components/ui/Drawer';
 import Pagination from '../../components/ui/Pagination';
+import Skeleton from '../../components/ui/Skeleton';
+import AdminStatsSkeleton from '../../components/ui/AdminStatsSkeleton';
 
 const FILTERS = ['all', 'processed', 'failed', 'pending'];
 
@@ -22,7 +25,7 @@ export default function WebhooksPage() {
     queryFn: () => apiFetch(`/admin/webhooks?search=${encodeURIComponent(search)}&status=${status}&page=${page}`),
   });
 
-  const { data: detail } = useQuery({
+  const { data: detail, isLoading: detailLoading } = useQuery({
     queryKey: ['admin-webhook-detail', openId],
     queryFn: () => apiFetch(`/admin/webhooks/${openId}`),
     enabled: !!openId,
@@ -49,12 +52,12 @@ export default function WebhooksPage() {
         <p className="mt-1 text-muted">Every Paddle webhook received by the license server.</p>
       </header>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+      {isLoading ? <AdminStatsSkeleton count={4} /> : <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
         <StatCard label="Received (24h)" value={stats.received24h ?? 0} />
         <StatCard label="Failed (24h)" value={stats.failed24h ?? 0} valueClassName={stats.failed24h ? 'text-danger' : ''} />
         <StatCard label="Last event" value={stats.lastEventAt ? timeAgo(stats.lastEventAt) : '—'} sub={stats.lastEventType ?? ''} />
         <StatCard label="Status" value={stats.failed24h ? 'Degraded' : 'Healthy'} valueClassName={stats.failed24h ? 'text-amber-400' : 'text-success'} />
-      </div>
+      </div>}
 
       <div className="rounded-xl border border-border bg-card">
         <div className="flex flex-wrap items-center gap-3 p-6 pb-4">
@@ -88,7 +91,7 @@ export default function WebhooksPage() {
         </div>
 
         {isLoading ? (
-          <p className="px-6 pb-6 text-sm text-muted">Loading…</p>
+          <AdminTableSkeleton columns={5} />
         ) : (
           <table className="w-full text-left text-sm">
             <thead>
@@ -131,6 +134,7 @@ export default function WebhooksPage() {
       <p className="text-sm text-muted">Replaying re-processes the event on the license server. Payloads are kept for 90 days.</p>
 
       <Drawer open={!!openId} title="Webhook payload" onClose={() => setOpenId(null)}>
+        {detailLoading && <div role="status" aria-label="Loading webhook payload" className="space-y-4"><span className="sr-only">Loading…</span><Skeleton className="h-5 w-2/3" /><Skeleton className="h-5 w-1/2" /><Skeleton className="h-5 w-3/4" /><Skeleton className="h-64 w-full" /></div>}
         {detail?.webhook && (
           <div className="space-y-4">
             <Row label="Event ID" value={detail.webhook.eventId} mono />

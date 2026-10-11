@@ -16,12 +16,29 @@ export default function GeneralTab({ data, onSaved }) {
   const [admin, setAdmin] = useState({ ...data.admin, password: '' });
   const [maintenance, setMaintenance] = useState(data.maintenance);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [twoFactorPassword, setTwoFactorPassword] = useState('');
+  const [twoFactorSetup, setTwoFactorSetup] = useState(null);
+  const [twoFactorCode, setTwoFactorCode] = useState('');
+  const [recoveryCodes, setRecoveryCodes] = useState([]);
+  const [disableTwoFactor, setDisableTwoFactor] = useState({ password: '', code: '' });
 
   const storeMutation = useSaveSection(onSaved);
   const adminMutation = useSaveSection(onSaved);
   const maintenanceMutation = useSaveSection(onSaved);
   const deleteMutation = useMutation({
     mutationFn: () => apiFetch('/admin/settings/delete-store', { method: 'POST' }),
+  });
+  const beginTwoFactorMutation = useMutation({
+    mutationFn: () => apiFetch('/admin/settings/2fa/setup', { method: 'POST', body: JSON.stringify({ password: twoFactorPassword }) }),
+    onSuccess: setTwoFactorSetup,
+  });
+  const confirmTwoFactorMutation = useMutation({
+    mutationFn: () => apiFetch('/admin/settings/2fa/confirm', { method: 'POST', body: JSON.stringify({ secret: twoFactorSetup.secret, code: twoFactorCode }) }),
+    onSuccess: (result) => { setRecoveryCodes(result.recoveryCodes); setTwoFactorSetup(null); setTwoFactorPassword(''); setTwoFactorCode(''); onSaved(); },
+  });
+  const disableTwoFactorMutation = useMutation({
+    mutationFn: () => apiFetch('/admin/settings/2fa/disable', { method: 'POST', body: JSON.stringify(disableTwoFactor) }),
+    onSuccess: () => { setDisableTwoFactor({ password: '', code: '' }); onSaved(); },
   });
 
   return (
@@ -108,9 +125,44 @@ export default function GeneralTab({ data, onSaved }) {
         </div>
 
         <div className="mt-4 border-t border-border pt-4">
+          <div className="mb-4 rounded-lg border border-border bg-black/20 p-4">
+            <p className="text-sm font-medium">Administrator authenticator</p>
+            <p className="mt-1 text-sm text-muted">
+              {data.admin.twoFactorEnabled ? 'Authenticator is enrolled for your account.' : 'Enroll this administrator with an authenticator app before requiring two-factor sign-in.'}
+            </p>
+            {!data.admin.twoFactorEnabled && !twoFactorSetup && <div className="mt-3 flex flex-wrap gap-2">
+              <input type="password" value={twoFactorPassword} onChange={e => setTwoFactorPassword(e.target.value)} placeholder="Current password" className="min-w-48 flex-1 rounded-lg border border-border bg-black/30 px-3 py-2 text-sm" />
+              <button type="button" onClick={() => beginTwoFactorMutation.mutate()} disabled={!twoFactorPassword || beginTwoFactorMutation.isPending} className="rounded-lg border border-border px-3 py-2 text-sm font-medium hover:bg-white/5 disabled:opacity-50">{beginTwoFactorMutation.isPending ? 'Preparing…' : 'Set up authenticator'}</button>
+            </div>}
+            {beginTwoFactorMutation.isError && <p className="mt-2 text-sm text-danger">{beginTwoFactorMutation.error.message}</p>}
+            {twoFactorSetup && <div className="mt-3 space-y-3">
+              <p className="text-sm text-muted">Add this secret in your authenticator app, then enter the 6-digit code to confirm.</p>
+              <code className="block break-all rounded bg-black/30 p-3 font-mono text-sm">{twoFactorSetup.secret}</code>
+              <a className="text-sm text-accent-hover underline" href={twoFactorSetup.otpauthUri}>Open authenticator app</a>
+              <div className="flex gap-2">
+                <input inputMode="numeric" maxLength={6} value={twoFactorCode} onChange={e => setTwoFactorCode(e.target.value.replace(/\D/g, ''))} placeholder="6-digit code" className="min-w-0 flex-1 rounded-lg border border-border bg-black/30 px-3 py-2 text-sm" />
+                <button type="button" onClick={() => confirmTwoFactorMutation.mutate()} disabled={twoFactorCode.length !== 6 || confirmTwoFactorMutation.isPending} className="rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">{confirmTwoFactorMutation.isPending ? 'Verifying…' : 'Confirm'}</button>
+              </div>
+              {confirmTwoFactorMutation.isError && <p className="text-sm text-danger">{confirmTwoFactorMutation.error.message}</p>}
+            </div>}
+            {recoveryCodes.length > 0 && <div className="mt-3 rounded-lg bg-warning/10 p-3">
+              <p className="text-sm font-semibold">Save these recovery codes now. Each works once.</p>
+              <pre className="mt-2 whitespace-pre-wrap font-mono text-xs">{recoveryCodes.join('\n')}</pre>
+              <button type="button" onClick={() => setRecoveryCodes([])} className="mt-2 text-sm underline">I saved these codes</button>
+            </div>}
+            {data.admin.twoFactorEnabled && !data.admin.require2fa && <div className="mt-3 border-t border-border pt-3">
+              <p className="text-sm text-muted">To replace a lost authenticator, turn off the global requirement above, then verify your password and current authenticator or a recovery code here.</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <input type="password" value={disableTwoFactor.password} onChange={e => setDisableTwoFactor({ ...disableTwoFactor, password: e.target.value })} placeholder="Current password" className="min-w-40 flex-1 rounded-lg border border-border bg-black/30 px-3 py-2 text-sm" />
+                <input value={disableTwoFactor.code} onChange={e => setDisableTwoFactor({ ...disableTwoFactor, code: e.target.value })} placeholder="Authenticator or recovery code" className="min-w-48 flex-1 rounded-lg border border-border bg-black/30 px-3 py-2 text-sm" />
+                <button type="button" onClick={() => disableTwoFactorMutation.mutate()} disabled={!disableTwoFactor.password || !disableTwoFactor.code || disableTwoFactorMutation.isPending} className="rounded-lg border border-danger/40 px-3 py-2 text-sm text-danger disabled:opacity-50">Remove enrollment</button>
+              </div>
+              {disableTwoFactorMutation.isError && <p className="mt-2 text-sm text-danger">{disableTwoFactorMutation.error.message}</p>}
+            </div>}
+          </div>
           <Toggle
             label="Two-factor authentication"
-            description="Require TOTP on every admin login. (Not yet enforced — enrollment UI is coming.)"
+            description="Require an authenticator or one-time recovery code at every administrator login. All active admins must enroll first."
             checked={admin.require2fa}
             onChange={v => setAdmin({ ...admin, require2fa: v })}
           />

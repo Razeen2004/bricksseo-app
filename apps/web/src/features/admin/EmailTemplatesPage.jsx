@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Mail, RotateCcw, Send } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
+import AdminTableSkeleton from '../../components/ui/AdminTableSkeleton';
+import Skeleton from '../../components/ui/Skeleton';
 
 function formatDate(d) {
   if (!d) return null;
@@ -12,7 +14,7 @@ function TemplateList({ templates, isLoading, onOpen }) {
   return (
     <div className="rounded-xl border border-border bg-card">
       {isLoading ? (
-        <p className="px-6 py-6 text-sm text-muted">Loading…</p>
+        <AdminTableSkeleton columns={4} className="px-0 py-2" />
       ) : (
         <table className="w-full text-left text-sm">
           <thead>
@@ -103,7 +105,7 @@ function TemplateEditor({ templateKey, onBack }) {
     mutationFn: () => apiFetch(`/admin/email-templates/${templateKey}/test`, { method: 'POST' }),
   });
 
-  if (isLoading || !data) return <p className="text-sm text-muted">Loading…</p>;
+  if (isLoading || !data) return <div role="status" aria-label="Loading email template" className="space-y-5"><span className="sr-only">Loading…</span><Skeleton className="h-8 w-1/3" /><div className="grid grid-cols-1 gap-6 lg:grid-cols-2"><div className="space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-64 w-full" /><Skeleton className="h-48 w-full" /></div><Skeleton className="h-[500px] w-full" /></div></div>;
 
   return (
     <div className="space-y-6">

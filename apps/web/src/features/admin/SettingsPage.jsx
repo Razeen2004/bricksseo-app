@@ -5,6 +5,7 @@ import GeneralTab from './settings/GeneralTab';
 import IntegrationsTab from './settings/IntegrationsTab';
 import LicensingTab from './settings/LicensingTab';
 import NotificationsTab from './settings/NotificationsTab';
+import Skeleton from '../../components/ui/Skeleton';
 
 const TABS = [
   { id: 'general', label: 'General' },
@@ -44,7 +45,7 @@ export default function SettingsPage() {
       </div>
 
       {isLoading || !data ? (
-        <p className="text-sm text-muted">Loading…</p>
+        <div role="status" aria-label="Loading admin settings" className="space-y-5"><span className="sr-only">Loading…</span><Skeleton className="h-10 w-full" /><Skeleton className="h-52 w-full" /><Skeleton className="h-52 w-full" /></div>
       ) : (
         <>
           {tab === 'general' && <GeneralTab data={data} onSaved={refetch} />}

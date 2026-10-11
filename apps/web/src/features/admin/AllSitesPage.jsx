@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Search, AlertTriangle, Download, Trash2 } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
+import AdminTableSkeleton from '../../components/ui/AdminTableSkeleton';
 import { timeAgo } from '../../lib/format';
 import StatCard from '../../components/ui/StatCard';
 import Pagination from '../../components/ui/Pagination';
@@ -79,7 +80,7 @@ export default function AllSitesPage() {
         </div>
 
         {isLoading ? (
-          <p className="px-6 pb-6 text-sm text-muted">Loading…</p>
+          <AdminTableSkeleton columns={7} />
         ) : (
           <table className="w-full text-left text-sm">
             <thead>

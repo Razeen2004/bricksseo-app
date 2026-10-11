@@ -5,6 +5,9 @@ import { prisma } from '../../db/prisma.js';
 import { AppError } from '../../lib/errors.js';
 import { sendEmail } from '../email/mailer.js';
 import { requireUser } from '../../http/auth.js';
+import { getSettingSection } from '../../lib/settings.js';
+import { decryptValue } from '../licenses/keygen.js';
+import { hashRecoveryCode, verifyTotp } from '../../lib/totp.js';
 
 const LoginSchema = z.object({
   email: z.string().email(),
@@ -28,6 +31,32 @@ const ChangePasswordSchema = z.object({
 
 function hashToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+async function createSession(user, request, reply) {
+  const token = crypto.randomBytes(32).toString('hex');
+  const tokenHash = hashToken(token);
+  const idleExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const absoluteExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  await prisma.session.create({
+    data: {
+      userId: user.id,
+      tokenHash,
+      ip: request.headers['x-forwarded-for'] || request.ip,
+      userAgent: request.headers['user-agent'],
+      idleExpiresAt,
+      absoluteExpiresAt,
+      passwordChangeRequired: user.mustChangePassword
+    }
+  });
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { failedLoginCount: 0, lockedUntil: null, lastLoginAt: new Date() }
+  });
+  reply.setCookie('__Host-bsid', token, {
+    path: '/', secure: true, httpOnly: true, sameSite: 'Lax', maxAge: 30 * 24 * 60 * 60
+  });
+  return reply.status(200).send({ ok: true, mustChangePassword: user.mustChangePassword });
 }
 
 export async function issuePasswordResetToken(user, ip = null) {
@@ -77,45 +106,70 @@ export default async function authRoutes(fastify, opts) {
       throw new AppError('invalid_credentials', 401, 'Invalid email or password');
     }
 
-    // Success
-    const token = crypto.randomBytes(32).toString('hex');
-    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const security = await getSettingSection('store', { require2fa: false });
+    if (user.role === 'admin' && security.require2fa) {
+      if (!user.totpEnabledAt || !user.totpSecretCiphertext) {
+        throw new AppError('admin_2fa_not_enrolled', 403, 'Two-factor authentication is required for this administrator. Contact another administrator to complete enrollment.');
+      }
+      const challengeToken = crypto.randomBytes(32).toString('hex');
+      await prisma.authToken.create({
+        data: {
+          userId: user.id,
+          purpose: 'admin_2fa_login',
+          tokenHash: hashToken(challengeToken),
+          expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+          ip: request.headers['x-forwarded-for'] || request.ip
+        }
+      });
+      return reply.status(200).send({ ok: true, requiresTwoFactor: true, challengeToken });
+    }
 
-    const idleExpiresAt = new Date();
-    idleExpiresAt.setDate(idleExpiresAt.getDate() + 7);
-    
-    const absoluteExpiresAt = new Date();
-    absoluteExpiresAt.setDate(absoluteExpiresAt.getDate() + 30);
+    return createSession(user, request, reply);
+  });
 
-    const session = await prisma.session.create({
-      data: {
-        userId: user.id,
-        tokenHash,
-        ip: request.headers['x-forwarded-for'] || request.ip,
-        userAgent: request.headers['user-agent'],
-        idleExpiresAt,
-        absoluteExpiresAt,
-        passwordChangeRequired: user.mustChangePassword
+  fastify.post('/v1/auth/login/2fa', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (request, reply) => {
+    const { challengeToken, code } = z.object({ challengeToken: z.string().min(1), code: z.string().min(1).max(32) }).parse(request.body);
+    const challenge = await prisma.authToken.findUnique({ where: { tokenHash: hashToken(challengeToken) }, include: { user: true } });
+    if (!challenge || challenge.purpose !== 'admin_2fa_login' || challenge.usedAt || challenge.expiresAt < new Date() || challenge.user.status !== 'active' || challenge.user.role !== 'admin' || (challenge.user.lockedUntil && challenge.user.lockedUntil > new Date()) || !challenge.user.totpEnabledAt || !challenge.user.totpSecretCiphertext) {
+      throw new AppError('invalid_2fa_challenge', 401, 'Your verification session has expired. Sign in again.');
+    }
+
+    const user = challenge.user;
+    const secret = decryptValue(user.totpSecretCiphertext);
+    const validTotp = verifyTotp(secret, code);
+    let remainingRecoveryHashes = Array.isArray(user.recoveryCodesHash) ? user.recoveryCodesHash : [];
+    let validRecovery = false;
+    if (!validTotp) {
+      const codeHash = hashRecoveryCode(code);
+      const index = remainingRecoveryHashes.indexOf(codeHash);
+      if (index >= 0) {
+        remainingRecoveryHashes = remainingRecoveryHashes.filter((_, i) => i !== index);
+        validRecovery = true;
+      }
+    }
+    if (!validTotp && !validRecovery) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          failedLoginCount: { increment: 1 },
+          ...(user.failedLoginCount >= 4 ? { lockedUntil: new Date(Date.now() + 15 * 60 * 1000) } : {})
+        }
+      });
+      throw new AppError('invalid_2fa_code', 401, 'The authenticator code or recovery code is invalid.');
+    }
+
+    await prisma.$transaction(async (tx) => {
+      const consumed = await tx.authToken.updateMany({ where: { id: challenge.id, usedAt: null }, data: { usedAt: new Date() } });
+      if (consumed.count !== 1) throw new AppError('invalid_2fa_challenge', 401, 'This verification session has already been used. Sign in again.');
+      if (validRecovery) {
+        const recoveryUpdate = await tx.user.updateMany({
+          where: { id: user.id, recoveryCodesHash: { equals: user.recoveryCodesHash } },
+          data: { recoveryCodesHash: remainingRecoveryHashes }
+        });
+        if (recoveryUpdate.count !== 1) throw new AppError('invalid_2fa_code', 401, 'That recovery code has already been used.');
       }
     });
-
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { failedLoginCount: 0, lockedUntil: null, lastLoginAt: new Date() }
-    });
-
-    reply.setCookie('__Host-bsid', token, {
-      path: '/',
-      secure: true,
-      httpOnly: true,
-      sameSite: 'Lax',
-      maxAge: 30 * 24 * 60 * 60 // 30 days
-    });
-
-    return reply.status(200).send({ 
-      ok: true, 
-      mustChangePassword: user.mustChangePassword 
-    });
+    return createSession(user, request, reply);
   });
 
   fastify.post('/v1/auth/logout', async (request, reply) => {

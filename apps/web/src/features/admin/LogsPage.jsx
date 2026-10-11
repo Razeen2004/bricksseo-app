@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '../../lib/api';
+import AdminTableSkeleton from '../../components/ui/AdminTableSkeleton';
 import { formatDateTime } from '../../lib/format';
 import Pagination from '../../components/ui/Pagination';
 
@@ -24,7 +25,7 @@ export default function LogsPage() {
 
       <div className="rounded-xl border border-border bg-card">
         {isLoading ? (
-          <p className="px-6 py-6 text-sm text-muted">Loading…</p>
+          <AdminTableSkeleton columns={4} className="px-6 py-2" />
         ) : logs.length === 0 ? (
           <p className="px-6 py-6 text-sm text-muted">No audit events yet.</p>
         ) : (

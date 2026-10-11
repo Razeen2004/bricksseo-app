@@ -3,6 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Search, Download, Copy, Eye, MoreHorizontal, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { apiFetch } from '../../lib/api';
+import AdminTableSkeleton from '../../components/ui/AdminTableSkeleton';
+import AdminStatsSkeleton from '../../components/ui/AdminStatsSkeleton';
 import { formatDate } from '../../lib/format';
 import StatCard from '../../components/ui/StatCard';
 import Badge from '../../components/ui/Badge';
@@ -100,11 +102,11 @@ export default function AllLicensesPage() {
         <p className="mt-1 text-muted">Every Bricks SEO license across all customers.</p>
       </header>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      {isLoading ? <AdminStatsSkeleton count={3} /> : <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard label="Total" value={stats.total ?? 0} sub={`${stats.customers ?? 0} customers`} />
         <StatCard label="Active" value={stats.active ?? 0} valueClassName="text-success" sub={stats.total ? `${Math.round((stats.active / stats.total) * 100)}% of total` : ''} />
         <StatCard label="Expiring soon" value={stats.expiringSoon ?? 0} valueClassName="text-amber-400" sub="Next 30 days" />
-      </div>
+      </div>}
 
       <div className="rounded-xl border border-border bg-card">
         <div className="flex flex-wrap items-center gap-3 p-6 pb-4">
@@ -157,7 +159,7 @@ export default function AllLicensesPage() {
         </div>
 
         {isLoading ? (
-          <p className="px-6 pb-6 text-sm text-muted">Loading…</p>
+          <AdminTableSkeleton columns={7} />
         ) : (
           <table className="w-full text-left text-sm">
             <thead>

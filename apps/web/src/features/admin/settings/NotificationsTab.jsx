@@ -5,7 +5,7 @@ import Toggle from '../../../components/ui/Toggle';
 
 const CUSTOMER_EMAILS = [
   { key: 'purchaseConfirmation', label: 'Purchase confirmation', description: 'Sent immediately after a successful payment. Includes license key.' },
-  { key: 'licenseExpiryReminder', label: 'License expiry reminder', description: 'Warn customers 7 days before their license expires.' },
+  { key: 'licenseExpiryReminder', label: 'License expiry reminder', description: 'Send notices 7 days and 1 day before expiry, then after expiry if the license was not renewed.' },
   { key: 'paymentFailed', label: 'Payment failed', description: 'Notify customer when a subscription charge fails.' },
   { key: 'refundProcessed', label: 'Refund processed', description: 'Confirm when a refund has been issued to the customer.' },
 ];

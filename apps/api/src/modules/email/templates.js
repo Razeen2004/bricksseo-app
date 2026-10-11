@@ -145,6 +145,30 @@ export const DEFAULT_TEMPLATES = {
       "You're receiving this because a password reset was requested on your Bricks SEO account. If this wasn't you, you can ignore this email."
     )
   },
+  license_expiry_7d: {
+    subject: 'Your {{plan_name}} license expires in 7 days',
+    text: 'Hello,\n\nYour {{plan_name}} Bricks SEO license expires on {{expires_at}}. Renew it before then to keep receiving updates and support.\n\nRenew your plan: {{renewal_url}}',
+    html: emailShell('warning', `${badge('warning', 'License renewal')}
+      <h1 style="margin:16px 0 0;color:${COLORS.text};font-size:26px;font-weight:700;font-family:${FONT};">Your license expires in 7 days.</h1>
+      <p style="margin:12px 0 0;color:${COLORS.muted};font-size:15px;line-height:1.6;font-family:${FONT};">Your {{plan_name}} plan expires on {{expires_at}}. Renew it before then to keep receiving updates and support.</p>
+      ${ctaButton('{{renewal_url}}', 'Renew your plan →')}`, 'You are receiving this because you have an expiring Bricks SEO license.')
+  },
+  license_expiry_1d: {
+    subject: 'Action needed: your {{plan_name}} license expires tomorrow',
+    text: 'Hello,\n\nYour {{plan_name}} Bricks SEO license expires tomorrow ({{expires_at}}). Renew now to avoid an interruption to updates and support.\n\nRenew your plan: {{renewal_url}}',
+    html: emailShell('warning', `${badge('warning', 'Expires tomorrow')}
+      <h1 style="margin:16px 0 0;color:${COLORS.text};font-size:26px;font-weight:700;font-family:${FONT};">Your license expires tomorrow.</h1>
+      <p style="margin:12px 0 0;color:${COLORS.muted};font-size:15px;line-height:1.6;font-family:${FONT};">Your {{plan_name}} plan expires on {{expires_at}}. Renew now to avoid an interruption to updates and support.</p>
+      ${ctaButton('{{renewal_url}}', 'Renew your plan →')}`, 'You are receiving this because you have an expiring Bricks SEO license.')
+  },
+  license_expired: {
+    subject: 'Your Bricks SEO {{plan_name}} license has expired',
+    text: 'Hello,\n\nYour {{plan_name}} Bricks SEO license expired on {{expires_at}} and has not been renewed. Renew your plan to restore updates and support.\n\nRenew your plan: {{renewal_url}}',
+    html: emailShell('danger', `${badge('danger', 'License expired')}
+      <h1 style="margin:16px 0 0;color:${COLORS.text};font-size:26px;font-weight:700;font-family:${FONT};">Your license has expired.</h1>
+      <p style="margin:12px 0 0;color:${COLORS.muted};font-size:15px;line-height:1.6;font-family:${FONT};">Your {{plan_name}} plan expired on {{expires_at}} and has not been renewed. Renew to restore updates and support.</p>
+      ${ctaButton('{{renewal_url}}', 'Renew your plan →')}`, 'You are receiving this because a Bricks SEO license on your account has expired.')
+  },
   test: {
     subject: 'Bricks SEO — test email',
     text: 'This is a test email from your Bricks SEO admin settings. If you received this, your email configuration works.',
@@ -171,6 +195,9 @@ export const TEMPLATE_INFO = {
   welcome: { label: 'Welcome & new license', description: 'Sent once, when a brand-new customer completes checkout. Creates their account and delivers the first license key(s).' },
   new_license: { label: 'New license (existing customer)', description: 'Sent when a customer who already has an account buys another license.' },
   password_reset: { label: 'Password reset', description: 'Sent when a customer requests a password reset link.' },
+  license_expiry_7d: { label: 'License expiry (7 days)', description: 'Sent seven days before an active license expires.' },
+  license_expiry_1d: { label: 'License expiry (1 day)', description: 'Sent one day before an active license expires.' },
+  license_expired: { label: 'License expired', description: 'Sent after expiry if the license has not been renewed.' },
   test: { label: 'Test email', description: 'Sent from Settings → "Send test email" to confirm delivery is working.' },
   support_request: { label: 'Support request (internal)', description: 'Sent to your support inbox when a customer submits the Support form. Customers never see this one.' }
 };
@@ -184,6 +211,9 @@ const VAR_LABELS = {
   license_keys: 'License key(s), plain text — one per line',
   license_keys_html: 'License key(s), pre-formatted HTML — use only in the HTML body',
   reset_url: 'Password reset link (expires in 1 hour)',
+  plan_name: 'Name of the expiring plan',
+  expires_at: 'License expiration date',
+  renewal_url: 'Link to billing and plan renewal',
   subject: 'Subject line the customer typed in the Support form',
   message: 'Message the customer typed, plain text',
   message_html: 'Message the customer typed, with line breaks converted to <br> — use only in the HTML body',
@@ -203,6 +233,9 @@ export const TEMPLATE_SAMPLE_DATA = {
     licenseKeys: [{ key: 'BRKS-SAMP-LE98-7654-3210', plan: 'Agency' }]
   },
   password_reset: { token: 'sample-token' },
+  license_expiry_7d: { planName: 'Studio', expiresAt: '2026-10-18T00:00:00.000Z' },
+  license_expiry_1d: { planName: 'Studio', expiresAt: '2026-10-12T00:00:00.000Z' },
+  license_expired: { planName: 'Studio', expiresAt: '2026-10-10T00:00:00.000Z' },
   test: {},
   support_request: {
     subject: 'Cannot activate license',
@@ -235,6 +268,16 @@ export async function buildTemplateVars(key, data = {}) {
 
   if (key === 'password_reset') {
     return { ...common, reset_url: `${env.APP_URL}/reset-password?token=${data.token ?? ''}` };
+  }
+
+  if (['license_expiry_7d', 'license_expiry_1d', 'license_expired'].includes(key)) {
+    const expiresAt = data.expiresAt ? new Date(data.expiresAt) : null;
+    return {
+      ...common,
+      plan_name: data.planName ?? '',
+      expires_at: expiresAt && !Number.isNaN(expiresAt.getTime()) ? expiresAt.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' }) : '',
+      renewal_url: data.renewalUrl ?? `${env.APP_URL}/billing`
+    };
   }
 
   if (key === 'test') {

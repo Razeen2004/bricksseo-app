@@ -19,11 +19,15 @@ export async function buildApp(opts = {}) {
           'req.body.newPassword',
           'req.body.license_key',
           'req.body.token',
+          'req.body.challengeToken',
+          'req.body.secret',
+          'req.body.code',
           'req.body.smtp.password',
           '*.passwordHash',
           '*.keyCiphertext',
           '*.tempPasswordCiphertext',
-          '*.totpSecretCiphertext'
+          '*.totpSecretCiphertext',
+          '*.recoveryCodesHash'
         ],
         censor: '[redacted]'
       }

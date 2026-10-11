@@ -1,7 +1,7 @@
 import PgBoss from 'pg-boss';
 import { env } from '../config/env.js';
 
-const QUEUES = ['paddle.process_event', 'email.send'];
+const QUEUES = ['paddle.process_event', 'email.send', 'licenses.expiry.scan'];
 
 let boss;
 

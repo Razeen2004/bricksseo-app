@@ -7,6 +7,9 @@ import { writeAuditLog } from '../../lib/audit.js';
 import { sendEmail } from '../email/mailer.js';
 import { env } from '../../config/env.js';
 import { getSettingSection } from '../../lib/settings.js';
+import { encryptValue } from '../licenses/keygen.js';
+import { createTotpUri, generateRecoveryCodes, generateTotpSecret, hashRecoveryCode, verifyTotp } from '../../lib/totp.js';
+import { decryptValue } from '../licenses/keygen.js';
 
 const DEFAULTS = {
   store: { name: 'Bricks SEO', supportEmail: 'support@bricksseo.com', timezone: 'UTC' },
@@ -56,7 +59,8 @@ export default async function adminSettingsRoutes(fastify, opts) {
         firstName: firstName || '',
         lastName: lastNameParts.join(' ') || '',
         email: request.user.email,
-        require2fa: store.require2fa ?? false
+        require2fa: store.require2fa ?? false,
+        twoFactorEnabled: !!request.user.totpEnabledAt
       },
       maintenance,
       licensing: {
@@ -100,6 +104,15 @@ export default async function adminSettingsRoutes(fastify, opts) {
     }
 
     if (section === 'admin') {
+      const enableTwoFactor = !!values.require2fa;
+      if (enableTwoFactor) {
+        const unconfiguredAdmins = await prisma.user.count({
+          where: { role: 'admin', status: 'active', totpEnabledAt: null }
+        });
+        if (unconfiguredAdmins > 0) {
+          throw new AppError('admin_2fa_setup_required', 400, 'Every active administrator must enroll in two-factor authentication before it can be required.');
+        }
+      }
       const data = {
         name: [values.firstName, values.lastName].filter(Boolean).join(' ')
       };
@@ -131,6 +144,55 @@ export default async function adminSettingsRoutes(fastify, opts) {
       ip: request.ip
     });
 
+    return reply.status(200).send({ ok: true });
+  });
+
+  fastify.post('/v1/admin/settings/2fa/setup', { preHandler: [requireUser, requireAdmin] }, async (request, reply) => {
+    const { password } = z.object({ password: z.string().min(1) }).parse(request.body);
+    const user = await prisma.user.findUnique({ where: { id: request.user.id } });
+    if (user.totpEnabledAt) throw new AppError('already_enrolled', 409, 'Two-factor authentication is already enabled for this account.');
+    if (!await argon2.verify(user.passwordHash, password)) throw new AppError('invalid_credentials', 401, 'Your current password is incorrect.');
+    const secret = generateTotpSecret();
+    return reply.status(200).send({ ok: true, secret, otpauthUri: createTotpUri(secret, user.email) });
+  });
+
+  fastify.post('/v1/admin/settings/2fa/confirm', { preHandler: [requireUser, requireAdmin] }, async (request, reply) => {
+    const { secret, code } = z.object({ secret: z.string().min(16).max(64), code: z.string().regex(/^\d{6}$/) }).parse(request.body);
+    const user = await prisma.user.findUnique({ where: { id: request.user.id } });
+    if (user.totpEnabledAt) throw new AppError('already_enrolled', 409, 'Two-factor authentication is already enabled for this account.');
+    if (!verifyTotp(secret, code)) throw new AppError('invalid_2fa_code', 400, 'That code did not verify. Check your authenticator and try again.');
+    const recoveryCodes = generateRecoveryCodes();
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        totpSecretCiphertext: encryptValue(secret),
+        totpEnabledAt: new Date(),
+        recoveryCodesHash: recoveryCodes.map(hashRecoveryCode)
+      }
+    });
+    await writeAuditLog({ actorUserId: user.id, action: 'admin.2fa.enabled', targetType: 'user', targetId: user.id, ip: request.ip });
+    return reply.status(200).send({ ok: true, recoveryCodes });
+  });
+
+  fastify.post('/v1/admin/settings/2fa/disable', { preHandler: [requireUser, requireAdmin] }, async (request, reply) => {
+    const { password, code } = z.object({ password: z.string().min(1), code: z.string().min(1).max(32) }).parse(request.body);
+    const [user, store] = await Promise.all([
+      prisma.user.findUnique({ where: { id: request.user.id } }),
+      getSection('store')
+    ]);
+    if (store.require2fa) throw new AppError('two_factor_required', 400, 'Turn off the global administrator two-factor requirement before removing your enrollment.');
+    if (!user.totpEnabledAt || !user.totpSecretCiphertext) throw new AppError('not_enrolled', 400, 'This account has no authenticator enrollment.');
+    if (!await argon2.verify(user.passwordHash, password)) throw new AppError('invalid_credentials', 401, 'Your current password is incorrect.');
+    const validTotp = verifyTotp(decryptValue(user.totpSecretCiphertext), code);
+    const recoveryHashes = Array.isArray(user.recoveryCodesHash) ? user.recoveryCodesHash : [];
+    const recoveryHash = hashRecoveryCode(code);
+    const validRecovery = recoveryHashes.includes(recoveryHash);
+    if (!validTotp && !validRecovery) throw new AppError('invalid_2fa_code', 401, 'The authenticator code or recovery code is invalid.');
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { totpSecretCiphertext: null, totpEnabledAt: null, recoveryCodesHash: null }
+    });
+    await writeAuditLog({ actorUserId: user.id, action: 'admin.2fa.disabled', targetType: 'user', targetId: user.id, ip: request.ip });
     return reply.status(200).send({ ok: true });
   });
 
