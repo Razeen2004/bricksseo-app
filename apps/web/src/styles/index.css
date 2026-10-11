@@ -30,7 +30,7 @@ main .bg-card.p-6 {
 
 main table {
   display: block;
-  width: max-content;
+  width: 100%;
   max-width: 100%;
   min-width: 100%;
   overflow-x: auto;

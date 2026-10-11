@@ -29,7 +29,7 @@ export default function SettingsPage() {
       <PageHeader eyebrow="Admin" title="Settings." description="Configure your Bricks SEO store." icon={SettingsIcon} />
 
       <div className="overflow-x-auto border-b border-border">
-        <div className="flex min-w-max gap-6">
+        <div style={{overflow: "hidden"}} className="flex min-w-max gap-6">
           {TABS.map(t => (
             <button
               key={t.id}
