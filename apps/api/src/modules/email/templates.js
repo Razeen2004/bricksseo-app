@@ -169,6 +169,15 @@ export const DEFAULT_TEMPLATES = {
       <p style="margin:12px 0 0;color:${COLORS.muted};font-size:15px;line-height:1.6;font-family:${FONT};">Your {{plan_name}} plan expired on {{expires_at}} and has not been renewed. Renew to restore updates and support.</p>
       ${ctaButton('{{renewal_url}}', 'Renew your plan →')}`, 'You are receiving this because a Bricks SEO license on your account has expired.')
   },
+  subscription_canceled: {
+    subject: 'Your {{plan_name}} subscription has been canceled',
+    text: 'Hello,\n\nYour {{plan_name}} Bricks SEO subscription was canceled on {{canceled_at}}. Your license is no longer active.\n\nChanged your mind? Resubscribe any time: {{resubscribe_url}}',
+    html: emailShell('danger', `${badge('danger', 'Subscription canceled')}
+      <h1 style="margin:16px 0 0;color:${COLORS.text};font-size:26px;font-weight:700;font-family:${FONT};">Your subscription has been canceled.</h1>
+      <p style="margin:12px 0 0;color:${COLORS.muted};font-size:15px;line-height:1.6;font-family:${FONT};">Your {{plan_name}} Bricks SEO subscription was canceled on {{canceled_at}}. Your license is no longer active, and site activations under it have been deactivated.</p>
+      ${ctaButton('{{resubscribe_url}}', 'Resubscribe →')}
+      <p style="margin:20px 0 0;color:${COLORS.footer};font-size:12px;line-height:1.6;font-family:${FONT};">Changed your mind, or this wasn't you? <a href="mailto:{{support_email}}" style="color:${COLORS.accent.fg};">Contact support</a>.</p>`, 'You are receiving this because a Bricks SEO subscription on your account was canceled.')
+  },
   test: {
     subject: 'Bricks SEO — test email',
     text: 'This is a test email from your Bricks SEO admin settings. If you received this, your email configuration works.',
@@ -198,6 +207,7 @@ export const TEMPLATE_INFO = {
   license_expiry_7d: { label: 'License expiry (7 days)', description: 'Sent seven days before an active license expires.' },
   license_expiry_1d: { label: 'License expiry (1 day)', description: 'Sent one day before an active license expires.' },
   license_expired: { label: 'License expired', description: 'Sent after expiry if the license has not been renewed.' },
+  subscription_canceled: { label: 'Subscription canceled', description: "Sent when a customer's Paddle subscription is actually canceled (not when it's merely scheduled to cancel at period end)." },
   test: { label: 'Test email', description: 'Sent from Settings → "Send test email" to confirm delivery is working.' },
   support_request: { label: 'Support request (internal)', description: 'Sent to your support inbox when a customer submits the Support form. Customers never see this one.' }
 };
@@ -214,6 +224,8 @@ const VAR_LABELS = {
   plan_name: 'Name of the expiring plan',
   expires_at: 'License expiration date',
   renewal_url: 'Link to billing and plan renewal',
+  canceled_at: 'Date the subscription was canceled',
+  resubscribe_url: 'Link to buy the plan again',
   subject: 'Subject line the customer typed in the Support form',
   message: 'Message the customer typed, plain text',
   message_html: 'Message the customer typed, with line breaks converted to <br> — use only in the HTML body',
@@ -236,6 +248,7 @@ export const TEMPLATE_SAMPLE_DATA = {
   license_expiry_7d: { planName: 'Studio', expiresAt: '2026-10-18T00:00:00.000Z' },
   license_expiry_1d: { planName: 'Studio', expiresAt: '2026-10-12T00:00:00.000Z' },
   license_expired: { planName: 'Studio', expiresAt: '2026-10-10T00:00:00.000Z' },
+  subscription_canceled: { planName: 'Studio', planCode: 'studio', canceledAt: '2026-10-10T00:00:00.000Z' },
   test: {},
   support_request: {
     subject: 'Cannot activate license',
@@ -277,6 +290,16 @@ export async function buildTemplateVars(key, data = {}) {
       plan_name: data.planName ?? '',
       expires_at: expiresAt && !Number.isNaN(expiresAt.getTime()) ? expiresAt.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' }) : '',
       renewal_url: data.renewalUrl ?? `${env.APP_URL}/billing`
+    };
+  }
+
+  if (key === 'subscription_canceled') {
+    const canceledAt = data.canceledAt ? new Date(data.canceledAt) : null;
+    return {
+      ...common,
+      plan_name: data.planName ?? '',
+      canceled_at: canceledAt && !Number.isNaN(canceledAt.getTime()) ? canceledAt.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' }) : '',
+      resubscribe_url: `${env.APP_URL}/pay${data.planCode ? `?plan=${data.planCode}` : ''}`
     };
   }
 
