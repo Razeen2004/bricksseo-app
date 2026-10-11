@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useOutletContext } from 'react-router-dom';
+import { UserRound } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 import { formatDateTime, timeAgo } from '../../lib/format';
+import PageHeader from '../../components/ui/PageHeader';
+import EmptyState from '../../components/ui/EmptyState';
 
 export default function AccountPage() {
   const { user } = useOutletContext();
@@ -43,16 +46,12 @@ export default function AccountPage() {
   const sessions = data?.sessions ?? [];
 
   return (
-    <div className="space-y-8">
-      <header>
-        <p className="text-sm text-muted">Account</p>
-        <h1 className="mt-1 font-serif text-4xl italic">Account settings.</h1>
-        <p className="mt-1 text-muted">Your profile, password, and active sessions.</p>
-      </header>
+    <div className="space-y-6 sm:space-y-8">
+      <PageHeader eyebrow="Account" title="Account settings." description="Your profile, password, and active sessions." icon={UserRound} />
 
-      <div className="rounded-xl border border-border bg-card p-6">
+      <div className="rounded-2xl border border-border bg-card p-4 shadow-[0_12px_35px_rgba(0,0,0,0.14)] sm:p-6">
         <h2 className="font-semibold">Profile</h2>
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
             <label className="mb-1.5 block text-sm font-medium">Name</label>
             <input disabled value={user?.name || '—'} className="w-full rounded-lg border border-border bg-black/10 px-3 py-2 text-sm text-muted" />
@@ -65,7 +64,7 @@ export default function AccountPage() {
         <p className="mt-2 text-sm text-muted">To change your name or email, <a href="/support" className="text-accent-hover hover:underline">contact support</a>.</p>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-6">
+      <div className="rounded-2xl border border-border bg-card p-4 shadow-[0_12px_35px_rgba(0,0,0,0.14)] sm:p-6">
         <h2 className="font-semibold">Change password</h2>
         {changePasswordMutation.isSuccess && (
           <div className="mt-4 rounded-lg bg-success/10 px-3 py-2 text-sm text-success">
@@ -75,7 +74,7 @@ export default function AccountPage() {
         {changePasswordMutation.isError && (
           <div className="mt-4 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">{changePasswordMutation.error.message}</div>
         )}
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
             <label className="mb-1.5 block text-sm font-medium">Current password</label>
             <input
@@ -108,21 +107,21 @@ export default function AccountPage() {
       </div>
 
       <div className="rounded-xl border border-border bg-card">
-        <div className="flex items-center justify-between p-6 pb-4">
+        <div className="flex flex-col items-start justify-between gap-3 p-4 sm:flex-row sm:items-center sm:p-6 sm:pb-4">
           <div>
             <h2 className="font-semibold">Active sessions</h2>
             <p className="mt-1 text-sm text-muted">Devices and browsers currently signed in to your account.</p>
           </div>
           <button
             onClick={handleLogoutEverywhere}
-            className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-white/5"
+            className="min-h-10 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-white/5"
           >
             Log out everywhere
           </button>
         </div>
 
         {sessions.length === 0 ? (
-          <p className="px-6 pb-6 text-sm text-muted">No other active sessions.</p>
+          <EmptyState compact title="No active sessions" description="There are no other signed-in devices on this account." />
         ) : (
           <table className="w-full text-left text-sm">
             <thead>

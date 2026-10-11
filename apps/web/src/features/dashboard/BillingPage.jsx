@@ -1,7 +1,11 @@
 import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { Download } from 'lucide-react';
+import { Download, CreditCard, ExternalLink } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
+import PageHeader from '../../components/ui/PageHeader';
+import Skeleton from '../../components/ui/Skeleton';
+import Badge from '../../components/ui/Badge';
+import EmptyState from '../../components/ui/EmptyState';
 
 function formatMoney(minor, currency) {
   return new Intl.NumberFormat(undefined, { style: 'currency', currency: currency || 'USD' }).format((minor || 0) / 100);
@@ -57,67 +61,81 @@ export default function BillingPage() {
 
   const subscription = data?.subscription;
   const invoices = data?.invoices ?? [];
+  const linkedLicense = data?.licenses?.find(license => license.planCode === subscription?.planCode);
 
   return (
-    <div className="space-y-8">
-      <header>
-        <p className="text-sm text-muted">Account</p>
-        <h1 className="mt-1 font-serif text-4xl italic">Billing &amp; subscription.</h1>
-        <p className="mt-1 text-muted">Manage your plan, invoices, and payment method.</p>
-      </header>
+    <div className="space-y-6 sm:space-y-8">
+      <PageHeader eyebrow="Account" title="Billing & subscription." description="Manage your plan, invoices, and payment method." icon={CreditCard} />
 
       {portalError && (
         <div className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">{portalError}</div>
       )}
 
       {isLoading ? (
-        <p className="text-sm text-muted">Loading…</p>
+        <div role="status" aria-label="Loading billing information" className="space-y-4"><span className="sr-only">Loading…</span><Skeleton className="h-40 w-full" /><Skeleton className="h-24 w-full" /></div>
       ) : !subscription ? (
-        // <div className="rounded-xl border border-border bg-card p-8 text-center text-muted">
-        //   No active subscription found. If you bought a lifetime license, billing is handled through Paddle at checkout only.
-        // </div>
-        <>
-        </>
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-[0_12px_35px_rgba(0,0,0,0.14)] sm:p-8">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent-dim text-accent-hover"><CreditCard size={20} /></div>
+          <h2 className="mt-4 text-lg font-semibold">No active subscription</h2>
+          <p className="mt-1 max-w-xl text-sm leading-6 text-muted">There isn’t a recurring plan linked to this account. Your invoices will still appear here after a purchase.</p>
+          <a href="https://bricksseo.com/pricing/" className="mt-5 inline-flex min-h-10 items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-hover">
+            Explore plans <ExternalLink size={15} />
+          </a>
+        </div>
       ) : (
-        <div className="rounded-xl border border-border bg-card p-6">
+        <div className="rounded-2xl border border-border bg-card p-4 shadow-[0_12px_35px_rgba(0,0,0,0.14)] sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <h2 className="text-2xl font-semibold capitalize">{subscription.planName}</h2>
-              <p className="text-sm text-muted">
+              <p className="mt-1 text-sm text-muted">
                 {formatMoney(subscription.unitPriceMinor, subscription.currency)} / year
               </p>
             </div>
-            <div className="text-right">
-              <p className="font-mono text-lg">{formatMoney(subscription.unitPriceMinor, subscription.currency)} / year</p>
-              <p className="text-sm text-muted">
-                {subscription.scheduledChangeAction === 'cancel'
-                  ? `Ends on ${formatDate(subscription.scheduledChangeEffectiveAt)}`
-                  : `Renews ${formatDate(subscription.currentPeriodEnd)}`}
-              </p>
-            </div>
+            <Badge status={subscription.status} />
           </div>
 
-          <div className="mt-4 flex gap-3">
-            <button
-              onClick={openPortal}
-              disabled={portalMutation.isPending}
-              className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-hover disabled:opacity-50"
-            >
-              Change plan
-            </button>
-            <button
-              onClick={openPortal}
-              disabled={portalMutation.isPending}
-              className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-white/5 disabled:opacity-50"
-            >
-              Cancel subscription
-            </button>
+          <div className="mt-5 flex flex-col gap-1 rounded-xl border border-border bg-black/20 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm font-medium">
+              {subscription.scheduledChangeAction === 'cancel'
+                ? 'Cancellation scheduled'
+                : subscription.status === 'canceled'
+                  ? 'Subscription canceled'
+                  : 'Next renewal'}
+            </p>
+            <p className="text-sm text-muted">
+              {subscription.scheduledChangeAction === 'cancel'
+                ? `Access ends ${formatDate(subscription.scheduledChangeEffectiveAt)}`
+                : subscription.status === 'canceled'
+                  ? (linkedLicense?.expiresAt ? `Access through ${formatDate(linkedLicense.expiresAt)}` : 'No upcoming renewal')
+                  : formatDate(subscription.currentPeriodEnd)}
+            </p>
           </div>
+
+          {subscription.status !== 'canceled' && (
+            <div className="mt-5 flex flex-wrap gap-3">
+              <button
+                onClick={openPortal}
+                disabled={portalMutation.isPending}
+                className="min-h-10 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-hover disabled:opacity-50"
+              >
+                Change plan
+              </button>
+              {subscription.scheduledChangeAction !== 'cancel' && (
+                <button
+                  onClick={openPortal}
+                  disabled={portalMutation.isPending}
+                  className="min-h-10 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-white/5 disabled:opacity-50"
+                >
+                  Cancel subscription
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
 
-      <div className="rounded-xl border border-border bg-card p-6">
-        <div className="flex items-center justify-between">
+      {subscription && <div className="rounded-2xl border border-border bg-card p-4 shadow-[0_12px_35px_rgba(0,0,0,0.14)] sm:p-6">
+        <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div>
             <h3 className="font-semibold">Payment method</h3>
             <p className="mt-1 text-sm text-muted">Securely managed by Paddle, our payment partner. We never see your card details.</p>
@@ -130,15 +148,15 @@ export default function BillingPage() {
             Update payment method
           </button>
         </div>
-      </div>
+      </div>}
 
-      <div className="rounded-xl border border-border bg-card">
-        <h3 className="p-6 pb-4 font-semibold">Invoice history</h3>
+      <div className="rounded-2xl border border-border bg-card shadow-[0_12px_35px_rgba(0,0,0,0.14)]">
+        <h3 className="p-4 pb-4 font-semibold sm:p-6 sm:pb-4">Invoice history</h3>
         {invoiceError && (
-          <div className="mx-6 mb-4 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">{invoiceError}</div>
+          <div className="mx-4 mb-4 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger sm:mx-6">{invoiceError}</div>
         )}
         {invoices.length === 0 ? (
-          <p className="px-6 pb-6 text-sm text-muted">No invoices yet.</p>
+          <EmptyState compact title="No invoices yet" description="Completed purchases and renewals will be listed here." />
         ) : (
           <table className="w-full text-left text-sm">
             <thead>
@@ -175,7 +193,7 @@ export default function BillingPage() {
         )}
       </div>
 
-      <div className="text-center">
+      {subscription && <div className="text-center">
         <button
           onClick={openPortal}
           disabled={portalMutation.isPending}
@@ -186,7 +204,7 @@ export default function BillingPage() {
         <p className="mt-3 text-sm text-muted">
           For refunds, address changes, or VAT questions, use the billing portal or <a href="/support" className="text-accent-hover hover:underline">contact support</a>.
         </p>
-      </div>
+      </div>}
     </div>
   );
 }

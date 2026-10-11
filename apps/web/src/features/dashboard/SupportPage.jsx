@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useOutletContext } from 'react-router-dom';
-import { BookOpen, Sparkles, Rocket, ShieldCheck } from 'lucide-react';
+import { BookOpen, Sparkles, Rocket, ShieldCheck, LifeBuoy } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
+import PageHeader from '../../components/ui/PageHeader';
 
 export default function SupportPage() {
   const { user } = useOutletContext();
@@ -26,14 +27,10 @@ export default function SupportPage() {
   }
 
   return (
-    <div className="space-y-8">
-      <header>
-        <p className="text-sm text-muted">Account</p>
-        <h1 className="mt-1 font-serif text-4xl italic">Support.</h1>
-        <p className="mt-1 text-muted">We usually reply within a few hours on business days.</p>
-      </header>
+    <div className="space-y-6 sm:space-y-8">
+      <PageHeader eyebrow="Account" title="Support." description="We usually reply within a few hours on business days." icon={LifeBuoy} />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className="rounded-xl border border-border bg-card p-5">
           <BookOpen size={18} className="text-accent-hover" />
           <h3 className="mt-3 font-semibold">Docs</h3>
@@ -60,7 +57,7 @@ export default function SupportPage() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-6">
+      <div className="rounded-2xl border border-border bg-card p-4 shadow-[0_12px_35px_rgba(0,0,0,0.14)] sm:p-6">
         <h2 className="text-lg font-semibold">Send us a message</h2>
 
         {mutation.isSuccess && (

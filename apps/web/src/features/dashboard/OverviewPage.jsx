@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useOutletContext } from 'react-router-dom';
-import { Copy, Check, Plus, Download, BookOpen, MessageCircle, Sparkles } from 'lucide-react';
+import { Copy, Check, Plus, Download, BookOpen, MessageCircle, Sparkles, LayoutDashboard } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 import StatCard from '../../components/ui/StatCard';
 import AddSiteInfoDialog from '../../components/ui/AddSiteInfoDialog';
+import PageHeader from '../../components/ui/PageHeader';
+import EmptyState from '../../components/ui/EmptyState';
 
 function formatDate(d) {
   if (!d) return 'Never';
@@ -61,25 +63,19 @@ export default function OverviewPage() {
   const today = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
 
   return (
-    <div className="space-y-8">
-      <header>
-        <p className="text-sm text-muted">{today}</p>
-        <h1 className="mt-1 font-serif text-4xl italic">Welcome back, {user?.name || user?.email}.</h1>
-        <p className="mt-1 text-muted">Here's an overview of your Bricks SEO license.</p>
-      </header>
+    <div className="space-y-6 sm:space-y-8">
+      <PageHeader eyebrow={today} title={`Welcome back, ${user?.name || user?.email}.`} description="Here's an overview of your Bricks SEO license." icon={LayoutDashboard} />
 
       {!primaryLicense ? (
-        <div className="rounded-xl border border-border bg-card p-8 text-center text-muted">
-          No licenses found on your account yet.
-        </div>
+        <EmptyState title="No licenses yet" description="Once a purchase is linked to this account, your license key and site controls will appear here." action={<a href="https://bricksseo.com/pricing/" className="inline-flex min-h-10 items-center rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-hover">Explore plans</a>} />
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-3">
             <StatCard
               label="Status"
               value={<span className="capitalize">{primaryLicense.status}</span>}
               valueClassName={primaryLicense.status === 'active' ? 'text-success' : 'text-danger'}
-              sub={primaryLicense.expiresAt ? `Renews ${formatDate(primaryLicense.expiresAt)}` : 'Lifetime license'}
+              sub={primaryLicense.expiresAt ? `Expires ${formatDate(primaryLicense.expiresAt)}` : 'Lifetime license'}
             />
             <div className="rounded-xl border border-border bg-card p-5">
               <p className="text-xs uppercase tracking-wide text-muted">Sites used</p>
@@ -106,7 +102,7 @@ export default function OverviewPage() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-border bg-card p-6">
+          <div className="rounded-2xl border border-border bg-card p-4 sm:p-6">
             <div className="flex items-center justify-between">
               <p className="text-xs uppercase tracking-wide text-muted">Your license key</p>
             </div>
@@ -140,7 +136,7 @@ export default function OverviewPage() {
           </div>
 
           <div className="rounded-xl border border-border bg-card">
-            <div className="flex items-center justify-between p-6 pb-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 p-4 pb-4 sm:p-6 sm:pb-4">
               <h2 className="text-lg font-semibold">Activated sites</h2>
               <button
                 onClick={() => setAddSiteOpen(true)}
@@ -150,7 +146,7 @@ export default function OverviewPage() {
               </button>
             </div>
             {activeSites.length === 0 ? (
-              <p className="px-6 pb-6 text-sm text-muted">No sites activated yet.</p>
+              <EmptyState compact title="No sites activated" description="Install Bricks SEO and activate your license in WordPress to add the first site." />
             ) : (
               <table className="w-full text-left text-sm">
                 <thead>
@@ -189,7 +185,7 @@ export default function OverviewPage() {
         </>
       )}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-3">
         <div className="rounded-xl border border-border bg-card p-5">
           <BookOpen size={18} className="text-accent-hover" />
           <h3 className="mt-3 font-semibold">Read the docs</h3>

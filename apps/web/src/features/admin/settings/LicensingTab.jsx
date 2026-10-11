@@ -102,7 +102,7 @@ export default function LicensingTab({ data, onSaved }) {
         <p className="mt-1 text-sm font-medium">License activation</p>
         <p className="text-sm text-muted">Control how customers can use their licenses.</p>
 
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
             <label className="mb-1.5 block text-sm font-medium">Grace period (days)</label>
             <input

@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { FileText } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 import AdminTableSkeleton from '../../components/ui/AdminTableSkeleton';
 import { formatDateTime } from '../../lib/format';
 import Pagination from '../../components/ui/Pagination';
+import PageHeader from '../../components/ui/PageHeader';
+import EmptyState from '../../components/ui/EmptyState';
 
 export default function LogsPage() {
   const [page, setPage] = useState(1);
@@ -16,18 +19,14 @@ export default function LogsPage() {
   const logs = data?.logs ?? [];
 
   return (
-    <div className="space-y-8">
-      <header>
-        <p className="text-sm text-muted">Admin</p>
-        <h1 className="mt-1 font-serif text-4xl italic">Logs.</h1>
-        <p className="mt-1 text-muted">Every admin action, audited.</p>
-      </header>
+    <div className="space-y-6 sm:space-y-8">
+      <PageHeader eyebrow="Admin" title="Logs." description="Every admin action, audited." icon={FileText} />
 
       <div className="rounded-xl border border-border bg-card">
         {isLoading ? (
           <AdminTableSkeleton columns={4} className="px-6 py-2" />
         ) : logs.length === 0 ? (
-          <p className="px-6 py-6 text-sm text-muted">No audit events yet.</p>
+          <EmptyState compact title="No audit events yet" description="Admin activity will be recorded here as changes are made." />
         ) : (
           <table className="w-full text-left text-sm">
             <thead>

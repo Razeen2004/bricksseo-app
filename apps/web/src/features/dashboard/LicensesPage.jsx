@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useOutletContext } from 'react-router-dom';
-import { Eye, EyeOff, ChevronDown, ChevronUp } from 'lucide-react';
+import { Eye, EyeOff, ChevronDown, ChevronUp, KeyRound } from 'lucide-react';
 import { timeAgo } from '../../lib/format';
 import { apiFetch } from '../../lib/api';
 import StatCard from '../../components/ui/StatCard';
 import Badge from '../../components/ui/Badge';
+import PageHeader from '../../components/ui/PageHeader';
+import EmptyState from '../../components/ui/EmptyState';
 
 function formatDate(d) {
   if (!d) return '—';
@@ -25,16 +27,18 @@ function LicenseCard({ license }) {
   const pct = license.siteLimit ? Math.min(100, (sitesUsed / license.siteLimit) * 100) : 0;
 
   return (
-    <div className="rounded-xl border border-border bg-card p-6">
-      <div className="flex items-center justify-between">
+    <div className="rounded-2xl border border-border bg-card p-5 shadow-[0_12px_35px_rgba(0,0,0,0.14)] sm:p-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-center gap-2">
-          <code className="font-mono text-lg">
+          <code className="break-all font-mono text-sm sm:text-base">
             {revealedKey || license.keyHint}
           </code>
           <button
             onClick={() => revealMutation.mutate()}
-            className="text-muted hover:text-ink"
+            disabled={revealMutation.isPending}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-white/5 hover:text-ink disabled:opacity-50"
             title={revealedKey ? 'Key revealed' : 'Reveal key'}
+            aria-label={revealedKey ? 'Hide license key' : 'Reveal license key'}
           >
             {revealedKey ? <EyeOff size={16} /> : <Eye size={16} />}
           </button>
@@ -46,22 +50,22 @@ function LicenseCard({ license }) {
         {license.planName}
       </span>
 
-      <div className="mt-3 flex items-center gap-3">
-        <a href="/sites" className="text-sm font-medium hover:text-accent-hover">
+      <div className="mt-3 flex items-center gap-3 text-sm text-muted">
+        <span>
           {license.siteLimit ?? 'Unlimited'} sites · annual
-          {license.expiresAt && ` · ${license.status === 'expired' ? 'expired' : 'renews'} ${formatDate(license.expiresAt)}`}
-        </a>
+          {license.expiresAt && ` · ${license.status === 'expired' ? 'expired' : 'expires'} ${formatDate(license.expiresAt)}`}
+        </span>
       </div>
 
-      <div className="mt-4 flex gap-3">
+      <div className="mt-4 flex flex-wrap gap-2">
         <button
           onClick={() => setDetailsOpen(v => !v)}
-          className="flex items-center gap-1.5 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-white/5"
+          className="flex min-h-10 items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-medium hover:bg-white/5"
         >
           {detailsOpen ? 'Hide details' : 'View details'}
           {detailsOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         </button>
-        <a href="/billing" className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-white/5">
+        <a href="/billing" className="flex min-h-10 items-center rounded-lg border border-border px-3 py-2 text-sm font-medium hover:bg-white/5">
           Manage billing
         </a>
       </div>
@@ -107,14 +111,10 @@ export default function LicensesPage() {
     .sort((a, b) => new Date(a.expiresAt) - new Date(b.expiresAt))[0];
 
   return (
-    <div className="space-y-8">
-      <header>
-        <p className="text-sm text-muted">Account</p>
-        <h1 className="mt-1 font-serif text-4xl italic">Your licenses.</h1>
-        <p className="mt-1 text-muted">Every Bricks SEO license tied to this email.</p>
-      </header>
+    <div className="space-y-6 sm:space-y-8">
+      <PageHeader eyebrow="Account" title="Your licenses." description="Every Bricks SEO license tied to this email." icon={KeyRound} />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-3">
         <StatCard
           label="Total licenses"
           value={licenses.length}
@@ -122,16 +122,14 @@ export default function LicensesPage() {
         />
         <StatCard label="Total sites" value={`${totalSites} / ${totalSlots || '∞'}`} sub="Across all licenses" />
         <StatCard
-          label="Next renewal"
+          label="Next expiry"
           value={nextRenewal ? formatDate(nextRenewal.expiresAt) : '—'}
           sub={nextRenewal ? nextRenewal.planName : 'No upcoming renewals'}
         />
       </div>
 
       {licenses.length === 0 ? (
-        <div className="rounded-xl border border-border bg-card p-8 text-center text-muted">
-          No licenses on this account yet.
-        </div>
+        <EmptyState title="No licenses yet" description="Purchased licenses will appear here with their activation limits and expiry dates." />
       ) : (
         <div className="space-y-4">
           {licenses.map(license => <LicenseCard key={license.id} license={license} />)}

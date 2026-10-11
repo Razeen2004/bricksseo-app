@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Search, Download, Copy, Eye, MoreHorizontal, Trash2 } from 'lucide-react';
+import { Search, Download, Copy, Eye, MoreHorizontal, Trash2, KeyRound } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { apiFetch } from '../../lib/api';
 import AdminTableSkeleton from '../../components/ui/AdminTableSkeleton';
@@ -10,6 +10,8 @@ import StatCard from '../../components/ui/StatCard';
 import Badge from '../../components/ui/Badge';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import Pagination from '../../components/ui/Pagination';
+import PageHeader from '../../components/ui/PageHeader';
+import EmptyState from '../../components/ui/EmptyState';
 
 const FILTERS = ['all', 'active', 'expires_soon', 'expired', 'revoked'];
 
@@ -95,22 +97,18 @@ export default function AllLicensesPage() {
   }
 
   return (
-    <div className="space-y-8">
-      <header>
-        <p className="text-sm text-muted">Admin</p>
-        <h1 className="mt-1 font-serif text-4xl italic">All licenses.</h1>
-        <p className="mt-1 text-muted">Every Bricks SEO license across all customers.</p>
-      </header>
+    <div className="space-y-6 sm:space-y-8">
+      <PageHeader eyebrow="Admin" title="All licenses." description="Every Bricks SEO license across all customers." icon={KeyRound} />
 
-      {isLoading ? <AdminStatsSkeleton count={3} /> : <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      {isLoading ? <AdminStatsSkeleton count={3} /> : <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <StatCard label="Total" value={stats.total ?? 0} sub={`${stats.customers ?? 0} customers`} />
         <StatCard label="Active" value={stats.active ?? 0} valueClassName="text-success" sub={stats.total ? `${Math.round((stats.active / stats.total) * 100)}% of total` : ''} />
         <StatCard label="Expiring soon" value={stats.expiringSoon ?? 0} valueClassName="text-amber-400" sub="Next 30 days" />
       </div>}
 
       <div className="rounded-xl border border-border bg-card">
-        <div className="flex flex-wrap items-center gap-3 p-6 pb-4">
-          <div className="relative flex-1 min-w-[220px]">
+        <div className="flex flex-wrap items-center gap-3 p-4 sm:p-6 sm:pb-4">
+          <div className="relative min-w-0 flex-1 basis-full sm:basis-64">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
             <input
               value={search}
@@ -119,7 +117,7 @@ export default function AllLicensesPage() {
               className="w-full rounded-lg border border-border bg-black/30 py-2 pl-9 pr-3 text-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
             />
           </div>
-          <div className="flex items-center gap-1 rounded-full border border-border p-1">
+          <div className="flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-border p-1">
             {FILTERS.map(f => (
               <button
                 key={f}
@@ -160,6 +158,8 @@ export default function AllLicensesPage() {
 
         {isLoading ? (
           <AdminTableSkeleton columns={7} />
+        ) : licenses.length === 0 ? (
+          <EmptyState compact title={search || status !== 'all' ? 'No licenses match these filters' : 'No licenses yet'} description={search || status !== 'all' ? 'Try changing the search or status filter.' : 'Issued licenses will appear here.'} />
         ) : (
           <table className="w-full text-left text-sm">
             <thead>

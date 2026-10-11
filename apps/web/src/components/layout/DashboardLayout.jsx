@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
-  LayoutDashboard, KeyRound, Globe, CreditCard, LifeBuoy, ChevronDown,
+  LayoutDashboard, KeyRound, Globe, CreditCard, LifeBuoy, ChevronDown, Menu, X,
   Activity, Users, Zap, FileText, Settings as SettingsIcon, Mail, PackageOpen, Database
 } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
@@ -32,7 +32,7 @@ const ADMIN_NAV_ITEMS = [
 
 function navLinkClass({ isActive }) {
   return [
-    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+    'flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
     isActive ? 'bg-accent-dim text-accent-hover' : 'text-muted hover:text-ink hover:bg-white/5',
   ].join(' ');
 }
@@ -41,6 +41,7 @@ export default function DashboardLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['me'],
@@ -49,6 +50,10 @@ export default function DashboardLayout() {
   });
 
   const isAdmin = data?.user?.role === 'admin';
+  const currentNavItems = isAdmin ? ADMIN_NAV_ITEMS : CUSTOMER_NAV_ITEMS;
+  const currentPageLabel = currentNavItems.find(item => item.end
+    ? location.pathname === item.to
+    : location.pathname === item.to || location.pathname.startsWith(`${item.to}/`))?.label;
 
   const redirectTo = isLoading ? null : error
     ? (error.code === 'password_change_required' ? '/change-password' : '/login')
@@ -59,6 +64,23 @@ export default function DashboardLayout() {
   useEffect(() => {
     if (redirectTo) navigate(redirectTo, { replace: true });
   }, [redirectTo, navigate]);
+
+  useEffect(() => {
+    setSidebarOpen(false);
+    setMenuOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!sidebarOpen) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    const onKeyDown = (event) => event.key === 'Escape' && setSidebarOpen(false);
+    window.addEventListener('keydown', onKeyDown);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [sidebarOpen]);
 
   if (isLoading) {
     return <div className="flex min-h-screen items-center justify-center text-muted">Loading…</div>;
@@ -78,11 +100,15 @@ export default function DashboardLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-canvas font-sans text-ink">
-      <div className="flex">
-        <aside className="flex h-screen w-64 flex-col justify-between border-r border-border px-4 py-6 sticky top-0">
+    <div className="min-h-screen overflow-x-hidden bg-canvas font-sans text-ink">
+      <div className="flex min-h-screen">
+        {sidebarOpen && <button aria-label="Close navigation" className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm lg:hidden" onClick={() => setSidebarOpen(false)} />}
+        <aside id="dashboard-navigation" aria-label={isAdmin ? 'Admin navigation' : 'Account navigation'} className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} fixed inset-y-0 left-0 z-50 flex h-dvh w-[min(18rem,85vw)] flex-col justify-between overflow-y-auto border-r border-border bg-canvas px-4 py-5 transition-transform duration-200 lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:w-64 lg:translate-x-0 lg:shrink-0 lg:bg-transparent lg:px-4 lg:py-6`}>
           <div>
-            <Logo className="mb-8 px-2" />
+            <div className="mb-7 flex items-center justify-between px-2 lg:mb-8">
+              <Logo />
+              <button onClick={() => setSidebarOpen(false)} className="rounded-lg p-2 text-muted hover:bg-white/5 hover:text-ink lg:hidden" aria-label="Close navigation"><X size={20} /></button>
+            </div>
             {!isAdmin && (
               <>
                 <p className="mb-2 px-3 text-xs font-medium uppercase tracking-wide text-muted/70">Customer</p>
@@ -126,14 +152,18 @@ export default function DashboardLayout() {
           )}
         </aside>
 
-        <div className="flex min-h-screen flex-1 flex-col">
-          <header className="flex items-center justify-end gap-6 border-b border-border px-8 py-4">
+        <div className="flex min-h-screen min-w-0 flex-1 flex-col">
+          <header className="flex min-h-16 items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-6 lg:justify-end lg:gap-6 lg:px-8 lg:py-4">
+            <button onClick={() => setSidebarOpen(true)} className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-border text-muted hover:bg-white/5 hover:text-ink lg:hidden" aria-label="Open navigation" aria-controls="dashboard-navigation" aria-expanded={sidebarOpen}>
+              <Menu size={20} />
+            </button>
+            <div className="min-w-0 flex-1 truncate text-sm font-medium text-ink lg:hidden">{currentPageLabel || (isAdmin ? 'Admin panel' : 'My account')}</div>
             {!isAdmin && <a href="https://bricksseo.com/docs" target="_blank" rel="noreferrer" className="text-sm text-muted hover:text-ink">Docs</a>}
             {isAdmin && <NotificationsBell />}
             <div className="relative">
               <button
                 onClick={() => setMenuOpen(v => !v)}
-                className="flex items-center gap-1 rounded-full"
+                className="flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-full"
               >
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent-dim text-sm font-semibold text-accent-hover">
                   {initial}
@@ -163,7 +193,7 @@ export default function DashboardLayout() {
             </div>
           </header>
 
-          <main className="flex-1 px-8 py-8">
+          <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
             <Outlet context={{ user, licenses: data?.licenses ?? [] }} />
           </main>
         </div>

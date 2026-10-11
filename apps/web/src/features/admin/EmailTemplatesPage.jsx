@@ -4,6 +4,8 @@ import { ArrowLeft, Mail, RotateCcw, Send } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 import AdminTableSkeleton from '../../components/ui/AdminTableSkeleton';
 import Skeleton from '../../components/ui/Skeleton';
+import PageHeader from '../../components/ui/PageHeader';
+import EmptyState from '../../components/ui/EmptyState';
 
 function formatDate(d) {
   if (!d) return null;
@@ -15,6 +17,8 @@ function TemplateList({ templates, isLoading, onOpen }) {
     <div className="rounded-xl border border-border bg-card">
       {isLoading ? (
         <AdminTableSkeleton columns={4} className="px-0 py-2" />
+      ) : templates.length === 0 ? (
+        <EmptyState compact title="No email templates available" description="Template records could not be loaded for this workspace." />
       ) : (
         <table className="w-full text-left text-sm">
           <thead>
@@ -263,14 +267,8 @@ export default function EmailTemplatesPage() {
   });
 
   return (
-    <div className="space-y-8">
-      <header>
-        <p className="text-sm text-muted">Admin</p>
-        <h1 className="mt-1 flex items-center gap-2 font-serif text-4xl italic">
-          <Mail size={28} className="text-accent-hover" /> Email templates.
-        </h1>
-        <p className="mt-1 text-muted">Edit the exact subject, HTML, and plain-text copy for every email the platform sends.</p>
-      </header>
+    <div className="space-y-6 sm:space-y-8">
+      <PageHeader eyebrow="Admin" title="Email templates." description="Edit the subject, HTML, and plain-text copy for every email the platform sends." icon={Mail} />
 
       {openKey ? (
         <TemplateEditor templateKey={openKey} onBack={() => setOpenKey(null)} />

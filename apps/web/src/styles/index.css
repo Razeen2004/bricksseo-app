@@ -12,4 +12,56 @@
   ::selection {
     background-color: rgba(123, 121, 245, 0.35);
   }
+
+  :focus-visible {
+    outline: 2px solid #8f8dfa;
+    outline-offset: 2px;
+  }
+}
+
+main .bg-card {
+  border-radius: 1rem;
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.14);
+}
+
+main .bg-card.p-6 {
+  padding: 1rem;
+}
+
+main table {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  min-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+main table th,
+main table td {
+  white-space: nowrap;
+}
+
+main tbody tr {
+  transition: background-color 140ms ease;
+}
+
+main tbody tr:hover {
+  background-color: rgba(255, 255, 255, 0.025);
+}
+
+@media (max-width: 639px) {
+  main input,
+  main select,
+  main textarea {
+    max-width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (min-width: 640px) {
+  main .bg-card.p-6 {
+    padding: 1.5rem;
+  }
 }

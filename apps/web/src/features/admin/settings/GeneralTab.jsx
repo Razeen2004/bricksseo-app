@@ -55,7 +55,7 @@ export default function GeneralTab({ data, onSaved }) {
             />
             <p className="mt-1 text-sm text-muted">Shown in license emails and customer portal.</p>
           </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
               <label className="mb-1.5 block text-sm font-medium">Support email</label>
               <input
@@ -90,7 +90,7 @@ export default function GeneralTab({ data, onSaved }) {
 
       <div className="rounded-xl border border-border bg-card p-6">
         <h2 className="font-semibold">Admin account</h2>
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
             <label className="mb-1.5 block text-sm font-medium">First name</label>
             <input

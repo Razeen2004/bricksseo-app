@@ -5,6 +5,8 @@ import { Upload, PackageOpen, Download, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Skeleton from '../../components/ui/Skeleton';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import PageHeader from '../../components/ui/PageHeader';
+import EmptyState from '../../components/ui/EmptyState';
 
 export default function AdminReleasesPage() {
   const queryClient = useQueryClient();
@@ -91,17 +93,11 @@ export default function AdminReleasesPage() {
   const releases = data?.releases || [];
 
   return (
-    <div className="space-y-8">
-      <header className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-muted">Admin</p>
-          <h1 className="mt-1 font-serif text-3xl italic">Releases</h1>
-          <p className="mt-1 text-muted">Upload and manage plugin updates</p>
-        </div>
-      </header>
+    <div className="space-y-6 sm:space-y-8">
+      <PageHeader eyebrow="Admin" title="Releases." description="Upload and manage plugin updates." icon={PackageOpen} />
 
       {/* Upload Form */}
-      <div className="rounded-xl border border-border bg-card p-6">
+      <div className="rounded-2xl border border-border bg-card p-4 sm:p-6">
         <h2 className="flex items-center gap-2 text-lg font-semibold">
           <Upload size={18} /> Publish New Release
         </h2>
@@ -112,7 +108,7 @@ export default function AdminReleasesPage() {
             </div>
           )}
           
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <div>
               <label className="block text-sm font-medium">Version Number</label>
               <input
@@ -159,7 +155,7 @@ export default function AdminReleasesPage() {
 
       {/* Previous Releases */}
       <div className="rounded-xl border border-border bg-card">
-        <div className="p-6 pb-4">
+        <div className="p-4 pb-4 sm:p-6 sm:pb-4">
           <h2 className="flex items-center gap-2 text-lg font-semibold">
             <PackageOpen size={18} /> Release History
           </h2>
@@ -172,7 +168,7 @@ export default function AdminReleasesPage() {
             <Skeleton className="h-10 w-full" />
           </div>
         ) : releases.length === 0 ? (
-          <p className="px-6 pb-6 text-sm text-muted">No releases published yet.</p>
+          <EmptyState compact title="No releases published" description="Upload a ZIP package above to publish your first plugin release." />
         ) : (
           <table className="w-full text-left text-sm">
             <thead>

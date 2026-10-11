@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { CreditCard, Globe, UserPlus, XCircle, RotateCcw, ArrowUpRight } from 'lucide-react';
+import { Activity, CreditCard, Globe, UserPlus, XCircle, RotateCcw, ArrowUpRight } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 import { formatMoney, timeAgo } from '../../lib/format';
 import StatCard from '../../components/ui/StatCard';
 import Skeleton from '../../components/ui/Skeleton';
 import AdminTableSkeleton from '../../components/ui/AdminTableSkeleton';
+import PageHeader from '../../components/ui/PageHeader';
+import EmptyState from '../../components/ui/EmptyState';
 
 const RANGES = ['7d', '30d', '90d', '12w'];
 
@@ -49,23 +51,19 @@ export default function OverviewPage() {
   }));
 
   return (
-    <div className="space-y-8">
-      <header>
-        <p className="text-sm text-muted">Admin</p>
-        <h1 className="mt-1 font-serif text-4xl italic">Overview.</h1>
-        <p className="mt-1 text-muted">Everything happening in Bricks SEO right now.</p>
-      </header>
+    <div className="space-y-6 sm:space-y-8">
+      <PageHeader eyebrow="Admin" title="Overview." description="Everything happening in Bricks SEO right now." icon={Activity} />
 
-      {isLoading ? <div role="status" aria-label="Loading admin overview" className="space-y-6"><span className="sr-only">Loading…</span><div className="grid grid-cols-1 gap-4 sm:grid-cols-4">{Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-28 w-full" />)}</div><Skeleton className="h-80 w-full" /><div className="grid grid-cols-1 gap-4 lg:grid-cols-2"><Skeleton className="h-64 w-full" /><Skeleton className="h-64 w-full" /></div><AdminTableSkeleton columns={6} /></div> : <>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+      {isLoading ? <div role="status" aria-label="Loading admin overview" className="space-y-6"><span className="sr-only">Loading…</span><div className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">{Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-28 w-full" />)}</div><Skeleton className="h-80 w-full" /><div className="grid grid-cols-1 gap-4 lg:grid-cols-2"><Skeleton className="h-64 w-full" /><Skeleton className="h-64 w-full" /></div><AdminTableSkeleton columns={6} /></div> : <>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
         <StatCard label="Revenue (all-time)" value={formatMoney(data?.revenueAllTimeMinor ?? 0)} sub={`+${data?.newLicensesThisWeek ?? 0} licenses this week`} />
         <StatCard label="Active licenses" value={data?.activeLicenses ?? 0} sub={`${data?.newLicensesThisWeek ?? 0} new this week`} />
         <StatCard label="Active sites" value={data?.activeSites ?? 0} sub={`Across ${data?.customerCount ?? 0} customers`} />
         <StatCard label="MRR" value={formatMoney(data?.mrrMinor ?? 0)} sub="Based on annual conversions" />
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-6">
-        <div className="flex items-center justify-between">
+        <div className="rounded-xl border border-border bg-card p-4 sm:p-6">
+        <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
           <h2 className="font-semibold">New licenses per week</h2>
           <div className="flex items-center gap-1 rounded-full border border-border p-1">
             {RANGES.map(r => (
@@ -102,7 +100,7 @@ export default function OverviewPage() {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className="rounded-xl border border-border bg-card">
-          <h2 className="p-6 pb-4 font-semibold">Recent activity</h2>
+          <h2 className="p-4 pb-4 font-semibold sm:p-6 sm:pb-4">Recent activity</h2>
           <div>
             {(data?.recentActivity ?? []).map(e => {
               const Icon = ACTIVITY_ICON[e.type] || UserPlus;
@@ -117,7 +115,7 @@ export default function OverviewPage() {
               );
             })}
             {(data?.recentActivity ?? []).length === 0 && (
-              <p className="px-6 py-6 text-sm text-muted">No activity yet.</p>
+              <EmptyState compact title="No activity yet" description="Customer and license events will appear here." />
             )}
           </div>
         </div>
@@ -137,13 +135,15 @@ export default function OverviewPage() {
       </div>
 
       <div className="rounded-xl border border-border bg-card">
-        <div className="flex items-center justify-between p-6 pb-4">
+        <div className="flex items-center justify-between gap-3 p-4 pb-4 sm:p-6 sm:pb-4">
           <h2 className="font-semibold">Top customers by revenue</h2>
           <a href="/admin/customers" className="flex items-center gap-1 text-sm text-accent-hover hover:underline">
             See all <ArrowUpRight size={14} />
           </a>
         </div>
-        <table className="w-full text-left text-sm">
+        {(data?.topCustomers ?? []).length === 0 ? (
+          <EmptyState compact title="No customer revenue yet" description="Purchase activity will appear here when customers check out." />
+        ) : <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-y border-border text-xs uppercase tracking-wide text-muted">
               <th className="px-6 py-2 font-medium">Email</th>
@@ -166,7 +166,7 @@ export default function OverviewPage() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table>}
       </div>
       </>}
     </div>

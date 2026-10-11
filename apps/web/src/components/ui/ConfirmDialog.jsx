@@ -34,8 +34,8 @@ export default function ConfirmDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-      <div className="w-full max-w-sm rounded-xl border border-border bg-card p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/60 p-4">
+      <div role="dialog" aria-modal="true" aria-label={title} className="my-auto max-h-[90dvh] w-full max-w-sm overflow-y-auto rounded-2xl border border-border bg-card p-4 shadow-2xl sm:p-6">
         <h3 className="text-lg font-semibold">{title}</h3>
         {description && <p className="mt-1 text-sm text-muted">{description}</p>}
 
@@ -69,17 +69,17 @@ export default function ConfirmDialog({
           </div>
         )}
 
-        <div className="mt-6 flex justify-end gap-3">
+        <div className="mt-6 flex flex-col-reverse justify-end gap-2 sm:flex-row sm:gap-3">
           <button
             onClick={handleCancel}
-            className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-white/5"
+            className="min-h-10 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-white/5"
           >
             Cancel
           </button>
           <button
             onClick={handleConfirm}
             disabled={!canConfirm || pending}
-            className={`rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 ${
+            className={`min-h-10 rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 ${
               danger ? 'bg-danger hover:bg-danger/80' : 'bg-accent hover:bg-accent-hover'
             }`}
           >

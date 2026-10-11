@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Search, AlertTriangle, Download, Trash2 } from 'lucide-react';
+import { Search, AlertTriangle, Download, Trash2, Globe } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 import AdminTableSkeleton from '../../components/ui/AdminTableSkeleton';
 import { timeAgo } from '../../lib/format';
 import StatCard from '../../components/ui/StatCard';
 import Pagination from '../../components/ui/Pagination';
+import PageHeader from '../../components/ui/PageHeader';
+import EmptyState from '../../components/ui/EmptyState';
 
 const FILTERS = ['all', 'active', 'stale30', 'stale90', 'outdated'];
 const FILTER_LABELS = { all: 'All', active: 'Active', stale30: 'Stale 30d+', stale90: 'Stale 90d+', outdated: 'Outdated plugin' };
@@ -35,14 +37,10 @@ export default function AllSitesPage() {
   const stats = data?.stats ?? {};
 
   return (
-    <div className="space-y-8">
-      <header>
-        <p className="text-sm text-muted">Admin</p>
-        <h1 className="mt-1 font-serif text-4xl italic">All sites.</h1>
-        <p className="mt-1 text-muted">Every domain activated across all licenses.</p>
-      </header>
+    <div className="space-y-6 sm:space-y-8">
+      <PageHeader eyebrow="Admin" title="All sites." description="Every domain activated across all licenses." icon={Globe} />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
         <StatCard label="Total sites" value={stats.total ?? 0} />
         <StatCard label="Active" value={stats.active ?? 0} valueClassName="text-success" sub="Pinged in last 7 days" />
         <StatCard label="Stale (30d+)" value={stats.stale30 ?? 0} valueClassName="text-amber-400" sub="Not seen in a month" />
@@ -50,8 +48,8 @@ export default function AllSitesPage() {
       </div>
 
       <div className="rounded-xl border border-border bg-card">
-        <div className="flex flex-wrap items-center gap-3 p-6 pb-4">
-          <div className="relative flex-1 min-w-[220px]">
+        <div className="flex flex-wrap items-center gap-3 p-4 sm:p-6 sm:pb-4">
+          <div className="relative min-w-0 flex-1 basis-full sm:basis-64">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
             <input
               value={search}
@@ -60,7 +58,7 @@ export default function AllSitesPage() {
               className="w-full rounded-lg border border-border bg-black/30 py-2 pl-9 pr-3 text-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
             />
           </div>
-          <div className="flex items-center gap-1 rounded-full border border-border p-1">
+          <div className="flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-border p-1">
             {FILTERS.map(f => (
               <button
                 key={f}
@@ -81,6 +79,8 @@ export default function AllSitesPage() {
 
         {isLoading ? (
           <AdminTableSkeleton columns={7} />
+        ) : sites.length === 0 ? (
+          <EmptyState compact title="No sites found" description={search ? 'Try a different domain search.' : 'Activated WordPress sites will appear here.'} />
         ) : (
           <table className="w-full text-left text-sm">
             <thead>

@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Globe } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 import StatCard from '../../components/ui/StatCard';
 import AddSiteInfoDialog from '../../components/ui/AddSiteInfoDialog';
+import PageHeader from '../../components/ui/PageHeader';
+import EmptyState from '../../components/ui/EmptyState';
 
 const FILTERS = ['all', 'active', 'stale'];
 
@@ -50,14 +52,10 @@ export default function SitesPage() {
   const stats = data?.stats ?? { activeSites: 0, needsAttention: 0 };
 
   return (
-    <div className="space-y-8">
-      <header>
-        <p className="text-sm text-muted">Account</p>
-        <h1 className="mt-1 font-serif text-4xl italic">Your sites.</h1>
-        <p className="mt-1 text-muted">Every WordPress site currently using your Bricks SEO license.</p>
-      </header>
+    <div className="space-y-6 sm:space-y-8">
+      <PageHeader eyebrow="Account" title="Your sites." description="Every WordPress site currently using your Bricks SEO license." icon={Globe} />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-3">
         <StatCard label="Active sites" value={stats.activeSites} valueClassName="text-success" sub="All pinging normally" />
         <StatCard label="Total sites" value={sites.length} sub="Across your licenses" />
         <StatCard
@@ -69,10 +67,10 @@ export default function SitesPage() {
       </div>
 
       <div className="rounded-xl border border-border bg-card">
-        <div className="flex flex-wrap items-center justify-between gap-3 p-6 pb-4">
+        <div className="flex flex-col items-stretch justify-between gap-3 p-4 sm:flex-row sm:items-center sm:p-6 sm:pb-4">
           <h2 className="text-lg font-semibold">Activated sites</h2>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 rounded-full border border-border p-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-border p-1">
               {FILTERS.map(f => (
                 <button
                   key={f}
@@ -95,9 +93,9 @@ export default function SitesPage() {
         </div>
 
         {isLoading ? (
-          <p className="px-6 pb-6 text-sm text-muted">Loading…</p>
+          <div role="status" aria-label="Loading sites" className="space-y-3 p-4 sm:p-6"><span className="sr-only">Loading…</span><div className="h-8 animate-pulse rounded-lg bg-white/5" /><div className="h-8 animate-pulse rounded-lg bg-white/5" /></div>
         ) : sites.length === 0 ? (
-          <p className="px-6 pb-6 text-sm text-muted">No sites found for this filter.</p>
+          <EmptyState compact title="No sites found" description="Try another filter or activate your license from the Bricks SEO plugin." />
         ) : (
           <table className="w-full text-left text-sm">
             <thead>

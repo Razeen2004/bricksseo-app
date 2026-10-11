@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Search, RotateCcw, Copy } from 'lucide-react';
+import { Search, RotateCcw, Copy, Zap } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 import AdminTableSkeleton from '../../components/ui/AdminTableSkeleton';
 import { formatDateTime, timeAgo } from '../../lib/format';
@@ -10,6 +10,8 @@ import Drawer from '../../components/ui/Drawer';
 import Pagination from '../../components/ui/Pagination';
 import Skeleton from '../../components/ui/Skeleton';
 import AdminStatsSkeleton from '../../components/ui/AdminStatsSkeleton';
+import PageHeader from '../../components/ui/PageHeader';
+import EmptyState from '../../components/ui/EmptyState';
 
 const FILTERS = ['all', 'processed', 'failed', 'pending'];
 
@@ -45,14 +47,10 @@ export default function WebhooksPage() {
   const stats = data?.stats ?? {};
 
   return (
-    <div className="space-y-8">
-      <header>
-        <p className="text-sm text-muted">Admin</p>
-        <h1 className="mt-1 font-serif text-4xl italic">Webhooks.</h1>
-        <p className="mt-1 text-muted">Every Paddle webhook received by the license server.</p>
-      </header>
+    <div className="space-y-6 sm:space-y-8">
+      <PageHeader eyebrow="Admin" title="Webhooks." description="Every Paddle webhook received by the license server." icon={Zap} />
 
-      {isLoading ? <AdminStatsSkeleton count={4} /> : <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+      {isLoading ? <AdminStatsSkeleton count={4} /> : <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
         <StatCard label="Received (24h)" value={stats.received24h ?? 0} />
         <StatCard label="Failed (24h)" value={stats.failed24h ?? 0} valueClassName={stats.failed24h ? 'text-danger' : ''} />
         <StatCard label="Last event" value={stats.lastEventAt ? timeAgo(stats.lastEventAt) : '—'} sub={stats.lastEventType ?? ''} />
@@ -60,8 +58,8 @@ export default function WebhooksPage() {
       </div>}
 
       <div className="rounded-xl border border-border bg-card">
-        <div className="flex flex-wrap items-center gap-3 p-6 pb-4">
-          <div className="relative flex-1 min-w-[220px]">
+        <div className="flex flex-wrap items-center gap-3 p-4 sm:p-6 sm:pb-4">
+          <div className="relative min-w-0 flex-1 basis-full sm:basis-64">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
             <input
               value={search}
@@ -70,7 +68,7 @@ export default function WebhooksPage() {
               className="w-full rounded-lg border border-border bg-black/30 py-2 pl-9 pr-3 text-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
             />
           </div>
-          <div className="flex items-center gap-1 rounded-full border border-border p-1">
+          <div className="flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-border p-1">
             {FILTERS.map(f => (
               <button
                 key={f}
@@ -92,6 +90,8 @@ export default function WebhooksPage() {
 
         {isLoading ? (
           <AdminTableSkeleton columns={5} />
+        ) : webhooks.length === 0 ? (
+          <EmptyState compact title="No webhook events found" description={search || status !== 'all' ? 'Try changing the search or event status filter.' : 'Paddle events will appear here when the server receives them.'} />
         ) : (
           <table className="w-full text-left text-sm">
             <thead>

@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Settings as SettingsIcon } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 import GeneralTab from './settings/GeneralTab';
 import IntegrationsTab from './settings/IntegrationsTab';
 import LicensingTab from './settings/LicensingTab';
 import NotificationsTab from './settings/NotificationsTab';
 import Skeleton from '../../components/ui/Skeleton';
+import PageHeader from '../../components/ui/PageHeader';
 
 const TABS = [
   { id: 'general', label: 'General' },
@@ -23,25 +25,23 @@ export default function SettingsPage() {
   });
 
   return (
-    <div className="space-y-8">
-      <header>
-        <p className="text-sm text-muted">Admin &rsaquo; Settings</p>
-        <h1 className="mt-1 font-serif text-4xl italic">Settings.</h1>
-        <p className="mt-1 text-muted">Configure your Bricks SEO store.</p>
-      </header>
+    <div className="space-y-6 sm:space-y-8">
+      <PageHeader eyebrow="Admin" title="Settings." description="Configure your Bricks SEO store." icon={SettingsIcon} />
 
-      <div className="flex gap-6 border-b border-border">
-        {TABS.map(t => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={`-mb-px border-b-2 pb-3 text-sm font-medium transition-colors ${
-              tab === t.id ? 'border-accent text-ink' : 'border-transparent text-muted hover:text-ink'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
+      <div className="overflow-x-auto border-b border-border">
+        <div className="flex min-w-max gap-6">
+          {TABS.map(t => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`-mb-px min-h-11 border-b-2 pb-3 text-sm font-medium transition-colors ${
+                tab === t.id ? 'border-accent text-ink' : 'border-transparent text-muted hover:text-ink'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {isLoading || !data ? (

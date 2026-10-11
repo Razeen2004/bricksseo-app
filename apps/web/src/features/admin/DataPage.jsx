@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Archive, Download, FileUp, ShieldCheck, Upload } from 'lucide-react';
+import { Archive, Download, FileUp, ShieldCheck, Upload, Database } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import PageHeader from '../../components/ui/PageHeader';
 
 const MAX_BACKUP_BYTES = 20 * 1024 * 1024;
 
@@ -87,14 +88,10 @@ export default function AdminDataPage() {
   }
 
   return (
-    <div className="mx-auto space-y-8">
-      <header>
-        <p className="text-sm text-muted">Admin</p>
-        <h1 className="mt-1 font-serif text-4xl italic">Import / Export.</h1>
-        <p className="mt-1 text-muted">Move customer accounts, license keys, and activated sites between Bricks SEO servers.</p>
-      </header>
+    <div className="mx-auto space-y-6 sm:space-y-8">
+      <PageHeader eyebrow="Admin" title="Import / Export." description="Move customer accounts, license keys, and activated sites between Bricks SEO servers." icon={Database} />
 
-      <section className="rounded-xl border border-border bg-card p-6">
+      <section className="rounded-2xl border border-border bg-card p-4 sm:p-6">
         <h2 className="flex items-center gap-2 text-lg font-semibold"><Archive size={18} /> Export a portable backup</h2>
         <p className="mt-2 text-sm text-muted">
           Includes customer profile state, license keys and status, plans, limits, expiry dates, notes, license events, and full activation records. It does not include passwords, payment history, or Paddle subscriptions.
@@ -110,7 +107,7 @@ export default function AdminDataPage() {
         </a>
       </section>
 
-      <section className="rounded-xl border border-border bg-card p-6">
+      <section className="rounded-2xl border border-border bg-card p-4 sm:p-6">
         <h2 className="flex items-center gap-2 text-lg font-semibold"><FileUp size={18} /> Import a backup</h2>
         <p className="mt-2 text-sm text-muted">
           Import restores the exported profile, license, event, and activation state for matching customers and keys. Missing records are recreated. Data created after the backup but absent from it is left untouched. Keys are re-hashed and encrypted with this server’s secrets, so plugin license checks continue to work even when source and destination use different keys.
@@ -145,7 +142,7 @@ export default function AdminDataPage() {
         {preview && (
           <div className="mt-6 rounded-lg border border-border p-4">
             <h3 className="font-semibold">Preview</h3>
-            <dl className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+            <dl className="mt-3 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
               <div><dt className="text-muted">Customers to create</dt><dd>{preview.customersToCreate}</dd></div>
               <div><dt className="text-muted">Customers to restore</dt><dd>{preview.customersToRestore}</dd></div>
               <div><dt className="text-muted">Licenses to create</dt><dd>{preview.licensesToCreate}</dd></div>

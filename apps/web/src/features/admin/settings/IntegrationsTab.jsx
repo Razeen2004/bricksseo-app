@@ -60,7 +60,7 @@ export default function IntegrationsTab({ data, onSaved }) {
         <p className="mt-1 text-sm text-muted">
           Bricks SEO uses Paddle to process payments and issue license keys. Managed via the <code className="font-mono">PADDLE_*</code> environment variables — displayed here read-only.
         </p>
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
           <MaskedField label="API key (live)" value={data.integrations.paddle.apiKeyLive} help="Used for billing and subscription management." />
           <MaskedField label="Webhook secret" value={data.integrations.paddle.webhookSecret} help="Verifies incoming Paddle webhook events." />
           <MaskedField label="API key (sandbox)" value={data.integrations.paddle.apiKeySandbox} help="For testing only — not used in production." />
@@ -108,7 +108,7 @@ export default function IntegrationsTab({ data, onSaved }) {
             SMTP isn't the active provider right now, so these fields have no effect until you select "Custom SMTP" above.
           </p>
         )}
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
             <label className="mb-1.5 block text-sm font-medium">SMTP host</label>
             <input value={smtp.host} onChange={e => setSmtp({ ...smtp, host: e.target.value })} className="w-full rounded-lg border border-border bg-black/30 px-3 py-2 font-mono text-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent" />
