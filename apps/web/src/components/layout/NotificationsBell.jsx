@@ -1,18 +1,24 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { Bell, AlertTriangle, ShoppingCart } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Bell, AlertTriangle, CheckCheck, ShoppingCart } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 import { formatMoney, timeAgo } from '../../lib/format';
 
 export default function NotificationsBell() {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const { data } = useQuery({
     queryKey: ['admin-notifications'],
     queryFn: () => apiFetch('/admin/notifications'),
     refetchInterval: 30000,
+  });
+
+  const markReadMutation = useMutation({
+    mutationFn: () => apiFetch('/admin/notifications/read', { method: 'POST' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-notifications'] }),
   });
 
   const purchases = data?.purchases ?? [];
@@ -36,8 +42,20 @@ export default function NotificationsBell() {
       {open && (
         <div className="absolute right-0 z-20 mt-2 w-80 rounded-lg border border-border bg-card py-1 shadow-xl">
           <div className="border-b border-border px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted">
-            Notifications
+            <div className="flex items-center justify-between gap-3">
+              <span>Notifications</span>
+              {count > 0 && (
+                <button
+                  onClick={() => markReadMutation.mutate()}
+                  disabled={markReadMutation.isPending}
+                  className="inline-flex items-center gap-1 normal-case tracking-normal text-accent-hover hover:underline disabled:opacity-50"
+                >
+                  <CheckCheck size={13} /> {markReadMutation.isPending ? 'Saving…' : 'Mark all as read'}
+                </button>
+              )}
+            </div>
           </div>
+          {markReadMutation.isError && <p className="px-3 pt-2 text-xs text-danger">{markReadMutation.error.message}</p>}
           {purchases.length === 0 && failed.length === 0 ? (
             <p className="px-3 py-4 text-sm text-muted">No purchases in the last {data?.purchaseWindowDays ?? 7} days and no failed webhooks.</p>
           ) : (

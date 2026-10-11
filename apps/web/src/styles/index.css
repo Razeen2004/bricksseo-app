@@ -29,13 +29,11 @@ main .bg-card.p-6 {
 }
 
 main table {
-  display: block;
+  display: table;
   width: 100%;
-  max-width: 100%;
+  max-width: none;
   min-width: 100%;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  -webkit-overflow-scrolling: touch;
+  table-layout: auto;
 }
 
 main table th,
@@ -66,6 +64,16 @@ main tbody tr:hover {
 }
 
 @media (max-width: 639px) {
+  main .bg-card:has(table) {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  main table:not(.invoice-history-table) {
+    width: max-content;
+  }
+
   main input,
   main select,
   main textarea {

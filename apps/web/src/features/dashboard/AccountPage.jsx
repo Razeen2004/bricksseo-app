@@ -6,6 +6,7 @@ import { apiFetch } from '../../lib/api';
 import { formatDateTime, timeAgo } from '../../lib/format';
 import PageHeader from '../../components/ui/PageHeader';
 import EmptyState from '../../components/ui/EmptyState';
+import Skeleton from '../../components/ui/Skeleton';
 
 export default function AccountPage() {
   const { user } = useOutletContext();
@@ -15,7 +16,7 @@ export default function AccountPage() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
 
-  const { data } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['account-sessions'],
     queryFn: () => apiFetch('/account/sessions'),
   });
@@ -120,7 +121,19 @@ export default function AccountPage() {
           </button>
         </div>
 
-        {sessions.length === 0 ? (
+        {isLoading ? (
+          <div role="status" aria-label="Loading active sessions" className="space-y-3 p-4 sm:p-6">
+            <span className="sr-only">Loading sessions…</span>
+            <div className="grid grid-cols-1 gap-4 border-b border-accent/15 pb-3 sm:grid-cols-4">
+              {Array.from({ length: 4 }, (_, index) => <Skeleton key={index} className="h-3 w-2/3" />)}
+            </div>
+            {Array.from({ length: 3 }, (_, row) => (
+              <div key={row} className="grid grid-cols-1 items-center gap-4 border-b border-accent/10 py-2 last:border-0 sm:grid-cols-4">
+                {Array.from({ length: 4 }, (_, column) => <Skeleton key={column} className={`h-4 ${column === 0 ? 'w-4/5' : 'w-3/5'}`} />)}
+              </div>
+            ))}
+          </div>
+        ) : sessions.length === 0 ? (
           <EmptyState compact title="No active sessions" description="There are no other signed-in devices on this account." />
         ) : (
           <table className="w-full text-left text-sm">

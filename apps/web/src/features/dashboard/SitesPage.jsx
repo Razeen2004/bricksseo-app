@@ -93,7 +93,7 @@ export default function SitesPage() {
         </div>
 
         {isLoading ? (
-          <div role="status" aria-label="Loading sites" className="space-y-3 p-4 sm:p-6"><span className="sr-only">Loading…</span><div className="h-8 animate-pulse rounded-lg bg-white/5" /><div className="h-8 animate-pulse rounded-lg bg-white/5" /></div>
+          <div role="status" aria-label="Loading sites" className="space-y-3 p-4 sm:p-6"><span className="sr-only">Loading…</span><div className="h-8 animate-pulse rounded-lg bg-accent/10" /><div className="h-8 animate-pulse rounded-lg bg-accent/10" /></div>
         ) : sites.length === 0 ? (
           <EmptyState compact title="No sites found" description="Try another filter or activate your license from the Bricks SEO plugin." />
         ) : (

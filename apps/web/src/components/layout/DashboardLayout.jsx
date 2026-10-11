@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 import Logo from '../ui/Logo';
+import Skeleton from '../ui/Skeleton';
 import NotificationsBell from './NotificationsBell';
 
 const CUSTOMER_NAV_ITEMS = [
@@ -83,7 +84,40 @@ export default function DashboardLayout() {
   }, [sidebarOpen]);
 
   if (isLoading) {
-    return <div className="flex min-h-screen items-center justify-center text-muted">Loading…</div>;
+    return (
+      <div role="status" aria-label="Loading account" className="min-h-screen overflow-x-hidden bg-canvas font-sans text-ink">
+        <span className="sr-only">Loading account…</span>
+        <div className="flex min-h-screen">
+          <aside className="hidden w-64 shrink-0 space-y-6 border-r border-border px-6 py-7 lg:block">
+            <Skeleton className="h-9 w-36" />
+            <div className="space-y-3 pt-4">
+              {Array.from({ length: 5 }, (_, index) => <Skeleton key={index} className="h-10 w-full rounded-lg" />)}
+            </div>
+          </aside>
+          <div className="min-w-0 flex-1">
+            <header className="flex h-16 items-center justify-between border-b border-border px-4 sm:px-6 lg:px-8">
+              <Skeleton className="h-8 w-24 lg:hidden" />
+              <div className="ml-auto flex items-center gap-3">
+                <Skeleton className="h-8 w-8 rounded-full" />
+                <Skeleton className="h-8 w-8 rounded-full" />
+              </div>
+            </header>
+            <main className="space-y-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+              <div className="space-y-3">
+                <Skeleton className="h-3 w-20" />
+                <Skeleton className="h-9 w-64 max-w-full" />
+                <Skeleton className="h-4 w-80 max-w-full" />
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-3">
+                {Array.from({ length: 3 }, (_, index) => <Skeleton key={index} className="h-32 w-full rounded-2xl" />)}
+              </div>
+              <Skeleton className="h-56 w-full rounded-2xl" />
+              <Skeleton className="h-36 w-full rounded-2xl" />
+            </main>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (redirectTo) {
