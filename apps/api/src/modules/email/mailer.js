@@ -15,11 +15,17 @@ async function resolveProvider() {
   return provider === 'env' ? env.EMAIL_PROVIDER : provider;
 }
 
-export async function sendEmail({ to, template, data, idempotencyKey, userId = null, replyTo = null }) {
-  // 1. Render template (admin-edited copy if one exists, else the built-in default)
-  const tpl = await getEffectiveTemplate(template);
-  const vars = await buildTemplateVars(template, data);
-  const { subject, text, html } = renderAll(tpl, vars);
+export async function sendEmail({ to, template, data, idempotencyKey, userId = null, replyTo = null, customContent = null }) {
+  // 1. Render a template or use an administrator-composed message.
+  let subject, text, html;
+  if (customContent) {
+    ({ subject, text, html } = customContent);
+  } else {
+    const tpl = await getEffectiveTemplate(template);
+    const vars = await buildTemplateVars(template, data);
+    ({ subject, text, html } = renderAll(tpl, vars));
+  }
+  const logTemplate = customContent ? 'admin_custom' : template;
 
   const provider = await resolveProvider();
 
@@ -28,8 +34,9 @@ export async function sendEmail({ to, template, data, idempotencyKey, userId = n
     data: {
       userId,
       to,
-      template,
+      template: logTemplate,
       subject,
+      ...(customContent ? { htmlBody: html, textBody: text } : {}),
       provider,
       idempotencyKey,
       status: 'queued'

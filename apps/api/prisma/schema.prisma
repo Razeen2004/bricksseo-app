@@ -318,6 +318,8 @@ model EmailLog {
   to                 String
   template           String
   subject            String
+  htmlBody           String?   @map("html_body") @db.Text
+  textBody           String?   @map("text_body") @db.Text
   provider           String
   providerMessageId  String?   @map("provider_message_id")
   idempotencyKey     String?   @map("idempotency_key")

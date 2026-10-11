@@ -77,6 +77,7 @@ export async function buildApp(opts = {}) {
   const adminLogsRoutes = (await import('./modules/admin/logs.routes.js')).default;
   const adminSettingsRoutes = (await import('./modules/admin/settings.routes.js')).default;
   const adminEmailTemplatesRoutes = (await import('./modules/admin/email-templates.routes.js')).default;
+  const adminEmailCenterRoutes = (await import('./modules/admin/email-center.routes.js')).default;
   await app.register(adminOverviewRoutes);
   await app.register(adminDataRoutes);
   await app.register(adminCustomersRoutes);
@@ -87,6 +88,7 @@ export async function buildApp(opts = {}) {
   await app.register(adminLogsRoutes);
   await app.register(adminSettingsRoutes);
   await app.register(adminEmailTemplatesRoutes);
+  await app.register(adminEmailCenterRoutes);
 
   // Releases Routes
   await app.register((await import('@fastify/multipart')).default, {

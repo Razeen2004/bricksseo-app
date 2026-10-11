@@ -17,6 +17,7 @@ import AdminWebhooksPage from '../features/admin/WebhooksPage';
 import AdminLogsPage from '../features/admin/LogsPage';
 import AdminSettingsPage from '../features/admin/SettingsPage';
 import AdminEmailTemplatesPage from '../features/admin/EmailTemplatesPage';
+import AdminEmailCenterPage from '../features/admin/EmailCenterPage';
 import AdminReleasesPage from '../features/admin/ReleasesPage';
 import AdminDataPage from '../features/admin/DataPage';
 import PayPage from '../features/checkout/PayPage';
@@ -42,6 +43,7 @@ const router = createBrowserRouter([
       { path: 'admin/logs', element: <AdminLogsPage /> },
       { path: 'admin/settings', element: <AdminSettingsPage /> },
       { path: 'admin/emails', element: <AdminEmailTemplatesPage /> },
+      { path: 'admin/email-center', element: <AdminEmailCenterPage /> },
     ],
   },
   { path: '/pay', element: <PayPage /> },

@@ -40,7 +40,7 @@ export default function LicensingTab({ data, onSaved }) {
       <div className="rounded-xl border border-border bg-card p-6">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold">Plans</h2>
-          <span className="rounded-full bg-white/5 px-2.5 py-1 text-xs font-medium capitalize text-muted">{data.licensing.paddleEnv} IDs</span>
+          <span className="rounded-full bg-white/5 px-2.5 py-1 text-xs font-medium text-muted">Paddle plan IDs</span>
         </div>
         <p className="mt-1 text-sm text-muted">
           Enter each plan's Paddle Price ID to make its <code className="font-mono text-xs">/pay</code> checkout link work. Product ID is optional reference info only — Paddle checkout uses the Price ID.
