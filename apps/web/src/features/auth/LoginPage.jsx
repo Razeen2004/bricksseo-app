@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
@@ -12,6 +12,7 @@ export default function LoginPage() {
   const [twoFactorChallenge, setTwoFactorChallenge] = useState('');
   const [twoFactorCode, setTwoFactorCode] = useState('');
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const mutation = useMutation({
     mutationFn: (credentials) => apiFetch(twoFactorChallenge ? '/auth/login/2fa' : '/auth/login', {
@@ -26,6 +27,10 @@ export default function LoginPage() {
         setTwoFactorCode('');
         return;
       }
+      // Clear any cached data left over from a previous session on this tab
+      // (expired session, or a different account logging in) before loading
+      // the dashboard, so nothing stale from another account briefly shows.
+      queryClient.clear();
       navigate(data?.mustChangePassword ? '/change-password' : '/');
     }
   });

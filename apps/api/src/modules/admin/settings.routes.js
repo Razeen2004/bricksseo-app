@@ -316,8 +316,4 @@ export default async function adminSettingsRoutes(fastify, opts) {
 
     return reply.status(200).send({ ok: true });
   });
-
-  fastify.post('/v1/admin/settings/delete-store', { preHandler: [requireUser, requireAdmin] }, async (request, reply) => {
-    throw new AppError('not_available', 400, "Store deletion isn't available yet — contact engineering.");
-  });
 }

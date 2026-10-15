@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   LayoutDashboard, KeyRound, Globe, CreditCard, LifeBuoy, ChevronDown, Menu, X,
   Activity, Users, Zap, FileText, Settings as SettingsIcon, Mail, Send, PackageOpen, Database
@@ -42,6 +42,7 @@ function navLinkClass({ isActive }) {
 export default function DashboardLayout() {
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -131,6 +132,10 @@ export default function DashboardLayout() {
 
   async function handleLogout() {
     await apiFetch('/auth/logout', { method: 'POST' });
+    // Wipe every cached query — otherwise the next person to log in on this
+    // tab (a different admin, or a customer) can briefly see this account's
+    // cached data (settings, customer lists, etc.) before anything refetches.
+    queryClient.clear();
     navigate('/login');
   }
 

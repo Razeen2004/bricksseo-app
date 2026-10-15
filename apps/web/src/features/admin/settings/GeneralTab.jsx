@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { apiFetch } from '../../../lib/api';
 import Toggle from '../../../components/ui/Toggle';
-import ConfirmDialog from '../../../components/ui/ConfirmDialog';
 
 function useSaveSection(onSaved) {
   return useMutation({
@@ -15,7 +14,6 @@ export default function GeneralTab({ data, onSaved }) {
   const [store, setStore] = useState(data.store);
   const [admin, setAdmin] = useState({ ...data.admin, password: '' });
   const [maintenance, setMaintenance] = useState(data.maintenance);
-  const [deleteOpen, setDeleteOpen] = useState(false);
   const [twoFactorPassword, setTwoFactorPassword] = useState('');
   const [twoFactorSetup, setTwoFactorSetup] = useState(null);
   const [twoFactorCode, setTwoFactorCode] = useState('');
@@ -25,9 +23,6 @@ export default function GeneralTab({ data, onSaved }) {
   const storeMutation = useSaveSection(onSaved);
   const adminMutation = useSaveSection(onSaved);
   const maintenanceMutation = useSaveSection(onSaved);
-  const deleteMutation = useMutation({
-    mutationFn: () => apiFetch('/admin/settings/delete-store', { method: 'POST' }),
-  });
   const beginTwoFactorMutation = useMutation({
     mutationFn: () => apiFetch('/admin/settings/2fa/setup', { method: 'POST', body: JSON.stringify({ password: twoFactorPassword }) }),
     onSuccess: setTwoFactorSetup,
@@ -193,33 +188,7 @@ export default function GeneralTab({ data, onSaved }) {
             }}
           />
         </div>
-
-        <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
-          <div>
-            <p className="text-sm font-medium text-danger">Delete store</p>
-            <p className="text-sm text-muted">Permanently removes all data. This cannot be undone.</p>
-          </div>
-          <button
-            onClick={() => setDeleteOpen(true)}
-            className="rounded-lg bg-danger px-4 py-2 text-sm font-semibold text-white hover:bg-danger/80"
-          >
-            Delete…
-          </button>
-        </div>
       </div>
-
-      <ConfirmDialog
-        open={deleteOpen}
-        title="Delete store"
-        description="This permanently removes all data and cannot be undone."
-        requireText={store.name}
-        danger
-        confirmLabel="Delete store"
-        pending={deleteMutation.isPending}
-        error={deleteMutation.isError ? deleteMutation.error.message : null}
-        onCancel={() => setDeleteOpen(false)}
-        onConfirm={() => deleteMutation.mutate()}
-      />
     </div>
   );
 }
