@@ -13,8 +13,12 @@ export default function AdminDataPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [confirmImport, setConfirmImport] = useState(false);
+  const [importError, setImportError] = useState(null);
+  const [confirmExport, setConfirmExport] = useState(false);
+  const [exportBusy, setExportBusy] = useState(false);
+  const [exportError, setExportError] = useState(null);
 
-  async function sendImport(dryRun) {
+  async function sendImport(dryRun, password) {
     if (!backup) return null;
     const response = await fetch(`/v1/admin/data/import?dryRun=${dryRun}`, {
       method: 'POST',
@@ -23,7 +27,7 @@ export default function AdminDataPage() {
         'Content-Type': 'application/json',
         'X-Requested-With': 'XMLHttpRequest'
       },
-      body: JSON.stringify(backup)
+      body: JSON.stringify(dryRun ? backup : { ...backup, password })
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
@@ -54,6 +58,40 @@ export default function AdminDataPage() {
     }
   }
 
+  async function handleExport({ password }) {
+    setExportBusy(true);
+    setExportError(null);
+    try {
+      const response = await fetch('/v1/admin/data/export.json', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({ password })
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error?.message || payload.message || 'Could not export the backup.');
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'bricksseo-backup.json';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      setConfirmExport(false);
+    } catch (err) {
+      setExportError(err.message);
+    } finally {
+      setExportBusy(false);
+    }
+  }
+
   async function handlePreview() {
     setBusy(true);
     setError('');
@@ -68,20 +106,18 @@ export default function AdminDataPage() {
     }
   }
 
-  async function handleImport() {
+  async function handleImport({ password }) {
     setBusy(true);
-    setError('');
+    setImportError('');
     try {
-      await sendImport(false);
+      await sendImport(false, password);
       setPreview(null);
       setConfirmImport(false);
       toast.success('Backup imported successfully.');
       setBackup(null);
       setFileName('');
     } catch (err) {
-      setError(err.message);
-      setConfirmImport(false);
-      setPreview(null);
+      setImportError(err.message);
     } finally {
       setBusy(false);
     }
@@ -99,12 +135,13 @@ export default function AdminDataPage() {
         <div className="mt-4 rounded-lg bg-amber-500/10 p-3 text-sm text-amber-200">
           The backup contains working license keys. Store the downloaded file securely and delete it when the transfer is complete.
         </div>
-        <a
-          href="/v1/admin/data/export.json"
+        <button
+          type="button"
+          onClick={() => { setExportError(null); setConfirmExport(true); }}
           className="mt-5 inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-hover"
         >
           <Download size={16} /> Download backup JSON
-        </a>
+        </button>
       </section>
 
       <section className="rounded-2xl border border-border bg-card p-4 sm:p-6">
@@ -164,13 +201,26 @@ export default function AdminDataPage() {
       <ConfirmDialog
         open={confirmImport}
         title="Import this backup?"
-        description="This adds customers, licenses, and activations that do not already exist. Type IMPORT to confirm."
+        description="This adds customers, licenses, and activations that do not already exist. Type IMPORT and confirm your password."
         requireText="IMPORT"
+        requirePassword
         confirmLabel="Import backup"
         pending={busy}
-        error={null}
+        error={importError}
         onConfirm={handleImport}
-        onCancel={() => setConfirmImport(false)}
+        onCancel={() => { setConfirmImport(false); setImportError(null); }}
+      />
+
+      <ConfirmDialog
+        open={confirmExport}
+        title="Download the backup?"
+        description="This file contains every customer's plaintext license key. Confirm your password to download it."
+        requirePassword
+        confirmLabel="Download backup"
+        pending={exportBusy}
+        error={exportError}
+        onConfirm={handleExport}
+        onCancel={() => { setConfirmExport(false); setExportError(null); }}
       />
     </div>
   );

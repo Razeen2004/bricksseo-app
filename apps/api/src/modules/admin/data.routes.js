@@ -5,6 +5,7 @@ import { prisma } from '../../db/prisma.js';
 import { requireUser, requireAdmin } from '../../http/auth.js';
 import { AppError } from '../../lib/errors.js';
 import { writeAuditLog } from '../../lib/audit.js';
+import { verifyAdminPassword } from '../../lib/verify-admin-password.js';
 import { decryptKey, encryptKey, hashKey, normalizeKey } from '../licenses/keygen.js';
 
 const MAX_BACKUP_BYTES = 20 * 1024 * 1024;
@@ -186,7 +187,12 @@ export async function restoreActivations(tx, licenseId, activations) {
 }
 
 export default async function adminDataRoutes(fastify) {
-  fastify.get('/v1/admin/data/export.json', { preHandler: [requireUser, requireAdmin] }, async (request, reply) => {
+  // POST (not GET) and password-gated: this response contains every
+  // customer's plaintext license key, so it needs the same "prove it's you"
+  // confirmation as the other destructive/high-sensitivity admin actions.
+  fastify.post('/v1/admin/data/export.json', { preHandler: [requireUser, requireAdmin] }, async (request, reply) => {
+    await verifyAdminPassword(request.user, request.body?.password);
+
     const users = await prisma.user.findMany({
       where: { role: 'customer', deletedAt: null },
       orderBy: { email: 'asc' },
@@ -260,12 +266,18 @@ export default async function adminDataRoutes(fastify) {
     preHandler: [requireUser, requireAdmin],
     bodyLimit: MAX_BACKUP_BYTES
   }, async (request, reply) => {
-    const validated = validateBackup(request.body);
+    const { password, ...backupBody } = request.body || {};
+    const dryRun = request.query.dryRun === 'true';
+
+    // A dry-run preview makes no writes, so it doesn't need re-confirmation —
+    // only the real, mutating import does.
+    if (!dryRun) await verifyAdminPassword(request.user, password);
+
+    const validated = validateBackup(backupBody);
     if (validated.errors.length) {
       return reply.status(400).send({ ok: false, errors: validated.errors.slice(0, 100), errorCount: validated.errors.length });
     }
 
-    const dryRun = request.query.dryRun === 'true';
     const emails = validated.customers.map(customer => customer.email);
     const hashes = validated.customers.flatMap(customer => customer.licenses.map(license => hashKey(license.key)));
     const [users, existingLicenses, plans] = await Promise.all([

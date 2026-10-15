@@ -60,9 +60,25 @@ export default async function adminLicensesRoutes(fastify, opts) {
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
     const pageSize = 50;
 
-    const where = search
-      ? { OR: [{ keyHint: { contains: search, mode: 'insensitive' } }, { user: { email: { contains: search, mode: 'insensitive' } } }] }
-      : {};
+    const now = new Date();
+    const thirtyDays = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+    // Mirrors effectiveLicenseStatus()'s logic (no subscription is joined here,
+    // same as before — only license.status/expiresAt feed the computed status)
+    // as a Prisma where clause, so filtering and pagination happen together in
+    // the database instead of a DB page being filtered down afterward.
+    const NOT_REVOKED_OR_SUSPENDED = { status: { notIn: ['revoked', 'suspended'] } };
+    const STATUS_WHERE = {
+      active: { AND: [NOT_REVOKED_OR_SUSPENDED, { OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] }] },
+      expires_soon: { AND: [NOT_REVOKED_OR_SUSPENDED, { expiresAt: { gt: now, lt: thirtyDays } }] },
+      expired: { AND: [NOT_REVOKED_OR_SUSPENDED, { expiresAt: { lt: now } }] },
+      revoked: { status: 'revoked' }
+    };
+
+    const where = {
+      ...(search ? { OR: [{ keyHint: { contains: search, mode: 'insensitive' } }, { user: { email: { contains: search, mode: 'insensitive' } } }] } : {}),
+      ...(STATUS_WHERE[status] || {})
+    };
 
     const [licenses, total, allForStats] = await Promise.all([
       prisma.license.findMany({
@@ -76,13 +92,7 @@ export default async function adminLicensesRoutes(fastify, opts) {
       prisma.license.findMany({ select: { status: true, expiresAt: true } })
     ]);
 
-    let rows = licenses.map(serialize);
-
-    const thirtyDays = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-    if (status === 'active') rows = rows.filter(r => r.status === 'active');
-    if (status === 'expires_soon') rows = rows.filter(r => r.status === 'active' && r.expiresAt && new Date(r.expiresAt) < thirtyDays);
-    if (status === 'expired') rows = rows.filter(r => r.status === 'expired');
-    if (status === 'revoked') rows = rows.filter(r => r.status === 'revoked');
+    const rows = licenses.map(serialize);
 
     const activeCount = allForStats.filter(l => effectiveLicenseStatus(l) === 'active').length;
     const expiringSoonCount = allForStats.filter(l => effectiveLicenseStatus(l) === 'active' && l.expiresAt && new Date(l.expiresAt) < thirtyDays).length;

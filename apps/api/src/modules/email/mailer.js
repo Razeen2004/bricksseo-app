@@ -3,16 +3,19 @@ import { prisma } from '../../db/prisma.js';
 import nodemailer from 'nodemailer';
 import { getEffectiveTemplate, buildTemplateVars, renderAll } from './templates.js';
 import { getSettingSection } from '../../lib/settings.js';
+import { decryptValue } from '../licenses/keygen.js';
 
 const DEFAULT_SMTP = { host: '', port: 587, username: '', password: '', fromName: '', fromAddress: '' };
+const DEFAULT_RESEND = { apiKeyCiphertext: null, fromName: '', fromAddress: '' };
 
-// The provider actually used each send: an admin can override the env var's
-// default live from Settings → Integrations, without a redeploy. "env" means
-// "use whatever EMAIL_PROVIDER is set to in the environment" (the default,
-// so existing deployments are unaffected until someone opts into an override).
+// The provider actually used each send. Configuration lives in Settings →
+// Integrations (the DB), not the environment — "env" is kept only as a legacy
+// escape hatch for anyone who still sets EMAIL_PROVIDER, and falls back to
+// "resend" (the real default) if that env var was never set either.
 async function resolveProvider() {
-  const { provider } = await getSettingSection('email', { provider: 'env' });
-  return provider === 'env' ? env.EMAIL_PROVIDER : provider;
+  const { provider } = await getSettingSection('email', { provider: 'resend' });
+  if (provider === 'env') return env.EMAIL_PROVIDER || 'resend';
+  return provider;
 }
 
 export async function sendEmail({ to, template, data, idempotencyKey, userId = null, replyTo = null, customContent = null }) {
@@ -78,15 +81,26 @@ export async function sendEmail({ to, template, data, idempotencyKey, userId = n
         }
       });
     } else if (provider === 'resend') {
+      const resend = await getSettingSection('resend', DEFAULT_RESEND);
+      const apiKey = resend.apiKeyCiphertext ? decryptValue(resend.apiKeyCiphertext) : env.RESEND_API_KEY;
+      const fromAddress = resend.fromAddress || env.EMAIL_FROM;
+      if (!apiKey) {
+        throw new Error('Resend is selected as the email provider, but no Resend API key is configured in Settings → Integrations.');
+      }
+      if (!fromAddress) {
+        throw new Error('Resend is selected as the email provider, but no "from" address is configured in Settings → Integrations.');
+      }
+      const from = resend.fromName ? `${resend.fromName} <${fromAddress}>` : fromAddress;
+
       const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${env.RESEND_API_KEY}`,
+          Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
           ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {})
         },
         body: JSON.stringify({
-          from: env.EMAIL_FROM,
+          from,
           to: [to],
           reply_to: replyTo || undefined,
           subject,

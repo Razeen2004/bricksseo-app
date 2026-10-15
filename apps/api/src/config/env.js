@@ -18,16 +18,16 @@ export const EnvSchema = z.object({
   PADDLE_WEBHOOK_TOLERANCE_SECONDS: z.coerce.number().int().min(5).default(300),
   PADDLE_CLIENT_TOKEN: z.string().optional(),
   AUTO_CANCEL_SUBSCRIPTION_ON_REFUND: z.enum(['true', 'false']).default('true').transform(v => v === 'true'),
-  EMAIL_PROVIDER: z.enum(['smtp', 'postmark', 'resend']),
-  EMAIL_FROM: z.string().min(3),
+  // EMAIL_PROVIDER/EMAIL_FROM/RESEND_API_KEY are optional env fallbacks only.
+  // The real, day-to-day configuration for these lives in Settings → Integrations
+  // (the `email`/`resend`/`smtp` rows in the `settings` table) so an admin can set
+  // up or rotate email delivery from the app itself, without touching EasyPanel.
+  EMAIL_PROVIDER: z.enum(['smtp', 'postmark', 'resend']).optional(),
+  EMAIL_FROM: z.string().min(3).optional(),
   ADMIN_ALERT_EMAIL: z.string().email(),
   RESEND_API_KEY: z.string().startsWith('re_').optional(),
   STORAGE_DRIVER: z.enum(['local', 'r2']),
   RELEASE_SIGNING_PUBLIC_KEY: z.string().min(40),
-}).superRefine((env, ctx) => {
-  if (env.EMAIL_PROVIDER === 'resend' && !env.RESEND_API_KEY) {
-    ctx.addIssue({ code: 'custom', message: 'RESEND_API_KEY is required when EMAIL_PROVIDER=resend', path: ['RESEND_API_KEY'] });
-  }
 });
 
 const parsed = EnvSchema.safeParse(process.env);

@@ -180,9 +180,21 @@ export default async function adminCustomersRoutes(fastify, opts) {
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
     const pageSize = 50;
 
+    // Status filtering happens in the `where` clause (not after the page is
+    // fetched) so pagination and the `total` count both reflect the filtered
+    // set, not the unfiltered one. "expired" requires at least one license —
+    // a customer with zero licenses has never purchased, which isn't the same
+    // thing as a license that lapsed.
+    const STATUS_WHERE = {
+      active: { licenses: { some: { status: 'active' } } },
+      expired: { AND: [{ licenses: { some: {} } }, { licenses: { none: { status: 'active' } } }] },
+      refunded: { transactions: { some: { status: 'refunded' } } }
+    };
+
     const where = {
       role: 'customer',
-      ...(search ? { email: { contains: search, mode: 'insensitive' } } : {})
+      ...(search ? { email: { contains: search, mode: 'insensitive' } } : {}),
+      ...(STATUS_WHERE[status] || {})
     };
 
     const [users, total] = await Promise.all([
@@ -196,7 +208,7 @@ export default async function adminCustomersRoutes(fastify, opts) {
       prisma.user.count({ where })
     ]);
 
-    let rows = users.map(u => {
+    const rows = users.map(u => {
       const ltv = u.transactions.filter(t => t.status === 'completed').reduce((s, t) => s + t.totalMinor, 0);
       const primaryLicense = u.licenses[0];
       const sitesUsed = u.licenses.reduce((n, l) => n + l.activations.filter(a => !a.deactivatedAt).length, 0);
@@ -219,10 +231,6 @@ export default async function adminCustomersRoutes(fastify, opts) {
         hasRefund
       };
     });
-
-    if (status === 'active') rows = rows.filter(r => r.hasActiveLicense);
-    if (status === 'expired') rows = rows.filter(r => !r.hasActiveLicense);
-    if (status === 'refunded') rows = rows.filter(r => r.hasRefund);
 
     const [totalCustomers, activeCustomers, churnedCustomers, ltvAgg] = await Promise.all([
       prisma.user.count({ where: { role: 'customer' } }),

@@ -17,6 +17,11 @@ import { hashKey } from '../licenses/keygen.js';
 const STORAGE_DIR = path.resolve(process.cwd(), 'storage/releases');
 await fs.mkdir(STORAGE_DIR, { recursive: true });
 
+// Strict semver-ish: digits and dots only, e.g. "1.2.3" or "1.2.3-beta.1".
+// This becomes part of a filename on disk, so it must never contain path
+// separators or traversal sequences.
+const VERSION_RE = /^[0-9]+(?:\.[0-9]+){1,3}(?:-[a-zA-Z0-9.]+)?$/;
+
 export default async function releaseRoutes(fastify, opts) {
   
   // --------------------------------------------------------
@@ -32,7 +37,8 @@ export default async function releaseRoutes(fastify, opts) {
     for await (const part of parts) {
       if (part.type === 'file') {
         if (!version) throw new AppError('validation_failed', 400, 'Version must be sent before the file.');
-        
+        if (!VERSION_RE.test(version)) throw new AppError('validation_failed', 400, 'Version must look like 1.2.3 (digits and dots only).');
+
         fileName = `bricks-seo-${version}.zip`;
         const filePath = path.join(STORAGE_DIR, fileName);
         
@@ -179,18 +185,22 @@ export default async function releaseRoutes(fastify, opts) {
         throw new Error('Invalid signature');
       }
 
+      // Re-check the license at serve time, not just at the moment the link was
+      // minted — a license revoked/expired during the token's 15-minute window
+      // must not still be able to pull the file down.
+      const licenses = await prisma.license.findMany({ where: { userId } });
+      const hasActive = licenses.some(l => effectiveLicenseStatus(l) === 'active');
+      if (!hasActive) throw new Error('License no longer active');
+
       const release = await prisma.release.findUnique({ where: { id: releaseId } });
       if (!release) throw new Error('Release not found');
 
       // Log download
       await prisma.releaseDownload.create({
-        data: { releaseId: release.id, licenseId: null, kind: 'dashboard' }
+        data: { releaseId: release.id, licenseId: licenses.find(l => effectiveLicenseStatus(l) === 'active')?.id ?? null, kind: 'dashboard' }
       });
 
       const filePath = path.join(STORAGE_DIR, release.storageKey);
-      
-      // Serve file
-      const stream = createWriteStream('/dev/null'); // Dummy, we will send file via fastify
       const fileBuffer = await fs.readFile(filePath);
       reply.header('Content-Disposition', `attachment; filename="bricks-seo-${release.version}.zip"`);
       reply.header('Content-Type', 'application/zip');

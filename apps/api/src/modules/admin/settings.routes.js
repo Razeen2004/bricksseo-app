@@ -15,8 +15,9 @@ const DEFAULTS = {
   store: { name: 'Bricks SEO', supportEmail: 'support@bricksseo.com', timezone: 'UTC' },
   maintenance: { enabled: false },
   licensing: { gracePeriodDays: 7, maxSiteActivationsOverride: null, domainValidation: true, allowLocalhost: true },
-  smtp: { host: '', port: 587, username: '', password: '', fromName: 'Bricks SEO', fromAddress: env.EMAIL_FROM },
-  email: { provider: 'env' },
+  smtp: { host: '', port: 587, username: '', password: '', fromName: 'Bricks SEO', fromAddress: env.EMAIL_FROM || '' },
+  resend: { apiKeyCiphertext: null, fromName: 'Bricks SEO', fromAddress: env.EMAIL_FROM || '' },
+  email: { provider: 'resend' },
   notifications: {
     customerEmails: { purchaseConfirmation: true, licenseExpiryReminder: true, paymentFailed: true, refundProcessed: true },
     adminAlerts: { newPurchase: false, newCustomerSignup: false, paymentFailure: true, refundIssued: true },
@@ -24,10 +25,15 @@ const DEFAULTS = {
   }
 };
 
-const SECTIONS = ['store', 'admin', 'maintenance', 'licensing', 'smtp', 'email', 'notifications'];
+const SECTIONS = ['store', 'admin', 'maintenance', 'licensing', 'smtp', 'resend', 'email', 'notifications'];
 
 async function getSection(key) {
   return getSettingSection(key, DEFAULTS[key]);
+}
+
+function maskSecret(value) {
+  if (!value || value.length < 8) return '••••••••';
+  return `${value.slice(0, 4)}••••${value.slice(-4)}`;
 }
 
 const SaveSchema = z.object({
@@ -37,11 +43,12 @@ const SaveSchema = z.object({
 
 export default async function adminSettingsRoutes(fastify, opts) {
   fastify.get('/v1/admin/settings', { preHandler: [requireUser, requireAdmin] }, async (request, reply) => {
-    const [store, maintenance, licensing, smtp, emailSettings, notifications, plans, planPrices] = await Promise.all([
+    const [store, maintenance, licensing, smtp, resend, emailSettings, notifications, plans, planPrices] = await Promise.all([
       getSection('store'),
       getSection('maintenance'),
       getSection('licensing'),
       getSection('smtp'),
+      getSection('resend'),
       getSection('email'),
       getSection('notifications'),
       prisma.plan.findMany({ orderBy: { sort: 'asc' } }),
@@ -87,8 +94,16 @@ export default async function adminSettingsRoutes(fastify, opts) {
         },
         email: {
           provider: emailSettings.provider,
-          envDefault: env.EMAIL_PROVIDER,
-          resendConfigured: !!env.RESEND_API_KEY
+          envDefault: env.EMAIL_PROVIDER || null
+        },
+        resend: {
+          fromName: resend.fromName,
+          fromAddress: resend.fromAddress,
+          // Never re-send the key itself after it's saved — only enough to
+          // confirm something is configured, same pattern as the admin
+          // password field ("leave blank to keep current").
+          configured: !!resend.apiKeyCiphertext || !!env.RESEND_API_KEY,
+          apiKeyHint: resend.apiKeyCiphertext ? maskSecret(decryptValue(resend.apiKeyCiphertext)) : (env.RESEND_API_KEY ? maskSecret(env.RESEND_API_KEY) + ' (from environment)' : null)
         },
         smtp
       },
@@ -101,6 +116,31 @@ export default async function adminSettingsRoutes(fastify, opts) {
 
     if (section === 'email' && !['env', 'resend', 'smtp'].includes(values.provider)) {
       throw new AppError('validation_failed', 400, 'Invalid email provider.');
+    }
+
+    if (section === 'resend') {
+      const current = await getSection('resend');
+      const { apiKey, fromName, fromAddress } = values;
+      const nextResend = {
+        // Blank/omitted apiKey means "keep the one already saved" — the
+        // admin UI never has the real key to send back after the first save.
+        apiKeyCiphertext: apiKey && apiKey.trim() ? encryptValue(apiKey.trim()) : current.apiKeyCiphertext,
+        fromName: typeof fromName === 'string' ? fromName.trim() : current.fromName,
+        fromAddress: typeof fromAddress === 'string' ? fromAddress.trim() : current.fromAddress
+      };
+      await prisma.setting.upsert({
+        where: { key: 'settings.resend' },
+        create: { key: 'settings.resend', value: nextResend, updatedBy: request.user.id },
+        update: { value: nextResend, updatedBy: request.user.id }
+      });
+      await writeAuditLog({
+        actorUserId: request.user.id,
+        action: 'settings.update',
+        targetType: 'settings',
+        targetId: 'resend',
+        ip: request.ip
+      });
+      return reply.status(200).send({ ok: true });
     }
 
     if (section === 'admin') {
