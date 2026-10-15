@@ -26,6 +26,12 @@ export default function PublicHomePage() {
           Buy a license →
         </a>
       </div>
+
+      <p className="mt-6 text-center text-sm text-muted">
+        <a href="https://bricksseo.com/terms-conditions/" className="hover:text-ink hover:underline">Terms</a>
+        {' · '}
+        <a href="https://bricksseo.com/privacy-policy/" className="hover:text-ink hover:underline">Privacy</a>
+      </p>
     </AuthShell>
   );
 }
