@@ -3,6 +3,14 @@
     root * /var/www/html
     encode gzip
 
+    # This is a private billing/account app, not a public site — keep it out of search entirely.
+    header X-Robots-Tag "noindex, nofollow"
+
+    handle /robots.txt {
+        header Content-Type text/plain
+        respond "User-agent: *\nDisallow: /\n"
+    }
+
     # Reverse proxy /v1 API requests to the Node backend (path kept, NOT stripped)
     handle /v1/* {
         reverse_proxy api:4000

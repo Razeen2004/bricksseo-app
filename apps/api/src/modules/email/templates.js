@@ -132,6 +132,35 @@ export const DEFAULT_TEMPLATES = {
       "You're receiving this because you purchased an additional Bricks SEO license."
     )
   },
+  admin_license_new_customer: {
+    subject: 'Your Bricks SEO account and license are ready',
+    text: 'Hello,\n\nA Bricks SEO administrator has created your account and issued your license.\n\nLog in: {{login_url}}\nEmail: {{email}}\nTemporary password: {{temp_password}}\n\nYou will be asked to choose a new password the first time you log in.\n\nYour license key(s):\n{{license_keys}}\n\nPaste the key into Bricks SEO > License in your WordPress admin to activate it.',
+    html: emailShell(
+      'success',
+      `${badge('success', 'License issued')}
+      <h1 style="margin:16px 0 0;color:${COLORS.text};font-size:26px;font-weight:700;font-family:${FONT};">Your account is ready.</h1>
+      <p style="margin:12px 0 0;color:${COLORS.muted};font-size:15px;line-height:1.6;font-family:${FONT};">A Bricks SEO administrator created your account and issued your license. Log in with the temporary password below.</p>
+      ${fieldBox([['Email', '{{email}}'], ['Temporary password', '{{temp_password}}']] )}
+      <p style="margin:16px 0 0;color:${COLORS.muted};font-size:13px;line-height:1.6;font-family:${FONT};">You will be asked to choose a new password the first time you log in.</p>
+      <p style="margin:24px 0 0;color:${COLORS.footer};font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-family:${FONT};">Your license key</p>
+      {{license_keys_html}}
+      ${ctaButton('{{login_url}}', 'Log in to your dashboard →')}`,
+      'You are receiving this because a Bricks SEO administrator issued a license to your account.'
+    )
+  },
+  admin_license_existing_customer: {
+    subject: 'A Bricks SEO license has been added to your account',
+    text: 'Hello,\n\nA Bricks SEO administrator has issued a new license for your account.\n\nYour license key(s):\n{{license_keys}}\n\nLog in at {{login_url}} with your existing password to manage it.',
+    html: emailShell(
+      'accent',
+      `${badge('accent', 'License issued')}
+      <h1 style="margin:16px 0 0;color:${COLORS.text};font-size:26px;font-weight:700;font-family:${FONT};">A new license is ready.</h1>
+      <p style="margin:12px 0 0;color:${COLORS.muted};font-size:15px;line-height:1.6;font-family:${FONT};">A Bricks SEO administrator issued a license for your account. Log in with your existing password to manage it.</p>
+      {{license_keys_html}}
+      ${ctaButton('{{login_url}}', 'Log in to your dashboard →')}`,
+      'You are receiving this because a Bricks SEO administrator issued a license to your account.'
+    )
+  },
   password_reset: {
     subject: 'Reset your Bricks SEO password',
     text: "Hello,\n\nWe received a request to reset your password. This link expires in 1 hour:\n{{reset_url}}\n\nIf you didn't request this, you can ignore this email.",
@@ -203,6 +232,8 @@ export const TEMPLATE_KEYS = Object.keys(DEFAULT_TEMPLATES);
 export const TEMPLATE_INFO = {
   welcome: { label: 'Welcome & new license', description: 'Sent once, when a brand-new customer completes checkout. Creates their account and delivers the first license key(s).' },
   new_license: { label: 'New license (existing customer)', description: 'Sent when a customer who already has an account buys another license.' },
+  admin_license_new_customer: { label: 'Admin issued license (new customer)', description: 'Sent when an administrator creates a customer account and issues its first license.' },
+  admin_license_existing_customer: { label: 'Admin issued license (existing customer)', description: 'Sent when an administrator issues a license to an existing customer.' },
   password_reset: { label: 'Password reset', description: 'Sent when a customer requests a password reset link.' },
   license_expiry_7d: { label: 'License expiry (7 days)', description: 'Sent seven days before an active license expires.' },
   license_expiry_1d: { label: 'License expiry (1 day)', description: 'Sent one day before an active license expires.' },
@@ -244,6 +275,14 @@ export const TEMPLATE_SAMPLE_DATA = {
   new_license: {
     licenseKeys: [{ key: 'BRKS-SAMP-LE98-7654-3210', plan: 'Agency' }]
   },
+  admin_license_new_customer: {
+    email: 'jane@example.com',
+    tempPassword: 'wxyz-ab12-cd34-ef56',
+    licenseKeys: [{ key: 'BRKS-SAMP-LE12-3456-7890', plan: 'Studio' }]
+  },
+  admin_license_existing_customer: {
+    licenseKeys: [{ key: 'BRKS-SAMP-LE98-7654-3210', plan: 'Agency' }]
+  },
   password_reset: { token: 'sample-token' },
   license_expiry_7d: { planName: 'Studio', expiresAt: '2026-10-18T00:00:00.000Z' },
   license_expiry_1d: { planName: 'Studio', expiresAt: '2026-10-12T00:00:00.000Z' },
@@ -269,11 +308,11 @@ export async function buildTemplateVars(key, data = {}) {
     login_url: `${env.APP_URL}/login`
   };
 
-  if (key === 'welcome' || key === 'new_license') {
+  if (['welcome', 'new_license', 'admin_license_new_customer', 'admin_license_existing_customer'].includes(key)) {
     const keys = data.licenseKeys?.length ? data.licenseKeys : data.licenseKey ? [{ key: data.licenseKey }] : [];
     const license_keys = keys.map((k) => `${k.plan ? `${k.plan}: ` : ''}${k.key}`).join('\n');
     const license_keys_html = licenseKeysBoxHtml(keys);
-    if (key === 'welcome') {
+    if (key === 'welcome' || key === 'admin_license_new_customer') {
       return { ...common, email: data.email ?? '', temp_password: data.tempPassword ?? '', license_keys, license_keys_html };
     }
     return { ...common, license_keys, license_keys_html };
