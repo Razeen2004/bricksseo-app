@@ -9,6 +9,7 @@ import { apiFetch } from '../../lib/api';
 import Logo from '../ui/Logo';
 import Skeleton from '../ui/Skeleton';
 import NotificationsBell from './NotificationsBell';
+import PublicHomePage from '../../features/auth/PublicHomePage';
 
 const CUSTOMER_NAV_ITEMS = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -58,7 +59,11 @@ export default function DashboardLayout() {
     ? location.pathname === item.to
     : location.pathname === item.to || location.pathname.startsWith(`${item.to}/`))?.label;
 
-  const redirectTo = isLoading ? null : error
+  // An anonymous visitor hitting the bare root domain gets real public
+  // content instead of an immediate bounce to /login — see PublicHomePage.
+  const isPublicRoot = !!error && error.code !== 'password_change_required' && location.pathname === '/';
+
+  const redirectTo = isLoading || isPublicRoot ? null : error
     ? (error.code === 'password_change_required' ? '/change-password' : '/login')
     : isAdmin && location.pathname === '/' ? '/admin'
     : !isAdmin && location.pathname.startsWith('/admin') ? '/'
@@ -120,6 +125,10 @@ export default function DashboardLayout() {
         </div>
       </div>
     );
+  }
+
+  if (isPublicRoot) {
+    return <PublicHomePage />;
   }
 
   if (redirectTo) {
