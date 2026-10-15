@@ -87,3 +87,27 @@ main tbody tr:hover {
     padding: 1.5rem;
   }
 }
+
+
+._hdr_1woch_74::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: -1px;
+    width: 0px !important;
+    height: 2px;
+    background: var(--primary)
+}
+
+._brandMark_1woch_78{
+  background: transparent;
+  padding: 0px;
+}
+
+._btnLight_1woch_66{
+  color: black !important;
+}
+
+._page_1woch_2 button{
+  padding: 10px !important;
+}

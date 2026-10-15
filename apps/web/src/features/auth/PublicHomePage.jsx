@@ -52,7 +52,7 @@ const FEATURES = [
   },
   {
     tag: 'SCHEMA', title: 'JSON-LD schema',
-    desc: 'Article, Product, LocalBusiness, FAQ, HowTo, Review and CollectionPage, chosen per page to match its content.',
+    desc: 'Article, Product, LocalBusiness, Review and CollectionPage, chosen per page to match its content.',
     icon: <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l-6-6 6-6 M15 6l6 6-6 6" /></svg>,
     viz: (
       <div className={s.mini}>
