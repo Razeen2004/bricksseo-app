@@ -92,24 +92,24 @@ export default function DashboardLayout() {
 
   if (isLoading) {
     return (
-      <div role="status" aria-label="Loading account" className="min-h-screen overflow-x-hidden bg-canvas font-sans text-ink">
+      <div role="status" aria-label="Loading account" className="min-h-screen overflow-x-hidden bg-canvas font-sans text-ink lg:h-dvh lg:overflow-hidden">
         <span className="sr-only">Loading account…</span>
-        <div className="flex min-h-screen">
+        <div className="flex min-h-screen lg:h-full lg:min-h-0">
           <aside className="hidden w-64 shrink-0 space-y-6 border-r border-border px-6 py-7 lg:block">
             <Skeleton className="h-9 w-36" />
             <div className="space-y-3 pt-4">
               {Array.from({ length: 5 }, (_, index) => <Skeleton key={index} className="h-10 w-full rounded-lg" />)}
             </div>
           </aside>
-          <div className="min-w-0 flex-1">
-            <header className="flex h-16 items-center justify-between border-b border-border px-4 sm:px-6 lg:px-8">
+          <div className="min-w-0 flex-1 lg:flex lg:min-h-0 lg:flex-col">
+            <header className="flex min-h-16 items-center justify-between gap-3 border-b border-border px-4 py-2 sm:px-6 lg:justify-end lg:gap-6 lg:px-6 lg:py-2">
               <Skeleton className="h-8 w-24 lg:hidden" />
               <div className="ml-auto flex items-center gap-3">
                 <Skeleton className="h-8 w-8 rounded-full" />
                 <Skeleton className="h-8 w-8 rounded-full" />
               </div>
             </header>
-            <main className="space-y-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+            <main className="space-y-6 px-4 py-6 sm:px-6 sm:py-8 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:px-8">
               <div className="space-y-3">
                 <Skeleton className="h-3 w-20" />
                 <Skeleton className="h-9 w-64 max-w-full" />
@@ -149,10 +149,10 @@ export default function DashboardLayout() {
   }
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-canvas font-sans text-ink">
-      <div className="flex min-h-screen">
+    <div className="min-h-screen overflow-x-hidden bg-canvas font-sans text-ink lg:h-dvh lg:overflow-hidden">
+      <div className="flex min-h-screen lg:h-full lg:min-h-0">
         {sidebarOpen && <button aria-label="Close navigation" className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm lg:hidden" onClick={() => setSidebarOpen(false)} />}
-        <aside id="dashboard-navigation" aria-label={isAdmin ? 'Admin navigation' : 'Account navigation'} className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} fixed inset-y-0 left-0 z-50 flex h-dvh w-[min(18rem,85vw)] flex-col justify-between overflow-y-auto border-r border-border bg-canvas px-4 py-5 transition-transform duration-200 lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:w-64 lg:translate-x-0 lg:shrink-0 lg:bg-transparent lg:px-4 lg:py-6`}>
+        <aside id="dashboard-navigation" aria-label={isAdmin ? 'Admin navigation' : 'Account navigation'} className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} fixed inset-y-0 left-0 z-50 flex h-dvh w-[min(18rem,85vw)] flex-col justify-between overflow-y-auto border-r border-border bg-canvas px-4 py-5 transition-transform duration-200 lg:sticky lg:top-0 lg:z-auto lg:h-dvh lg:w-64 lg:translate-x-0 lg:shrink-0 lg:bg-transparent lg:px-4 lg:py-6`}>
           <div>
             <div className="mb-7 flex items-center justify-between px-2 lg:mb-8">
               <Logo />
@@ -201,8 +201,8 @@ export default function DashboardLayout() {
           )}
         </aside>
 
-        <div className="flex min-h-screen min-w-0 flex-1 flex-col">
-          <header className="flex min-h-16 items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-6 lg:justify-end lg:gap-6 lg:px-8 lg:py-4">
+        <div className="flex min-h-screen min-w-0 flex-1 flex-col lg:h-full lg:min-h-0">
+          <header className="flex min-h-16 items-center justify-between gap-3 border-b border-border px-4 py-2 sm:px-6 lg:justify-end lg:gap-6 lg:px-6 lg:py-2">
             <button onClick={() => setSidebarOpen(true)} className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-border text-muted hover:bg-white/5 hover:text-ink lg:hidden" aria-label="Open navigation" aria-controls="dashboard-navigation" aria-expanded={sidebarOpen}>
               <Menu size={20} />
             </button>
@@ -242,7 +242,7 @@ export default function DashboardLayout() {
             </div>
           </header>
 
-          <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+          <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:min-h-0 lg:overflow-y-auto lg:px-8">
             <Outlet context={{ user, licenses: data?.licenses ?? [] }} />
           </main>
         </div>

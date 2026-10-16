@@ -3,6 +3,34 @@
 @tailwind utilities;
 
 @layer base {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #373744 #0e0e12;
+  }
+
+  *::-webkit-scrollbar {
+    width: 9px;
+    height: 9px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: #0e0e12;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background-color: #373744;
+    border: 2px solid #0e0e12;
+    border-radius: 999px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: #7b79f5;
+  }
+
+  *::-webkit-scrollbar-corner {
+    background: #0e0e12;
+  }
+
   body {
     background-color: #070709;
     background-image: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(123, 121, 245, 0.12), transparent);
@@ -34,11 +62,6 @@ main table {
   max-width: none;
   min-width: 100%;
   table-layout: auto;
-}
-
-main table th,
-main table td {
-  white-space: nowrap;
 }
 
 main table.invoice-history-table {
@@ -90,24 +113,38 @@ main tbody tr:hover {
 
 
 ._hdr_1woch_74::after {
-    content: "";
-    position: absolute;
-    left: 0;
-    bottom: -1px;
-    width: 0px !important;
-    height: 2px;
-    background: var(--primary)
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 0px !important;
+  height: 2px;
+  background: var(--primary)
 }
 
-._brandMark_1woch_78{
+._brandMark_1woch_78 {
   background: transparent;
   padding: 0px;
 }
 
-._btnLight_1woch_66{
+._btnLight_1woch_66 {
   color: black !important;
 }
 
-._page_1woch_2 button{
+._page_1woch_2 button {
   padding: 10px !important;
+}
+
+.sm\:space-y-8>:not([hidden])~:not([hidden]) {
+  --tw-space-y-reverse: 0;
+  margin-top: 20px !important;
+  margin-bottom: 20px !important;
+}
+
+main .bg-card{
+  border-radius: 10px !important;
+}
+
+tr.border-y.border-border.text-xs.uppercase.tracking-wide.text-muted {
+    border-top: none;
 }

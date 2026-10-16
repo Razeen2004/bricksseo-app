@@ -47,7 +47,7 @@ function TemplateList({ templates, isLoading, onOpen }) {
                   )}
                 </td>
                 <td className="px-6 py-3 text-right">
-                  <button onClick={() => onOpen(t.key)} className="text-sm text-accent-hover hover:underline">
+                  <button onClick={() => onOpen(t.key)} className="text-sm text-accent-hover hover:underline text-nowrap">
                     Edit →
                   </button>
                 </td>
