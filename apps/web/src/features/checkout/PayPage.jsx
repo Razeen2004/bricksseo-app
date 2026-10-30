@@ -31,6 +31,10 @@ export default function PayPage() {
   const [error, setError] = useState(null);
   const autoOpened = useRef(false);
 
+  useEffect(() => {
+    document.title = 'Checkout | Bricks SEO';
+  }, []);
+
   const { data, isLoading, error: configError } = useQuery({
     queryKey: ['checkout-config'],
     queryFn: () => apiFetch('/public/checkout-config')
