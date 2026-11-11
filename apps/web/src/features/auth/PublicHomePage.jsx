@@ -318,6 +318,7 @@ export default function PublicHomePage() {
                 <span className={s.brandName}>Bricks SEO</span>
               </div>
               <p style={{ margin: 0, maxWidth: 260, font: "italic 400 24px/1.15 var(--display)", letterSpacing: '-0.02em', color: 'var(--muted)' }}>SEO built for Bricks, by Bricks users.</p>
+              <p style={{ margin: 0, maxWidth: 320, fontFamily: 'var(--mono)', fontSize: 12.5, lineHeight: 1.5, color: 'var(--muted)' }}>Bricks is a registered trademark of CODEER LTD. Bricks SEO is independently developed and is not affiliated with or endorsed by CODEER LTD.</p>
             </div>
             <div className={s.ftrCol}>
               <span className={s.ftrH}>Product</span>
